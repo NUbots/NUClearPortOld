@@ -16,15 +16,15 @@ class ElasticDistortions
 {
 public:
     //! elastic distortion
-    static constexpr double sigma = 5.0;
+    static constexpr double sigma = 8.0;
     //! elastic scaling (in avg px)
     static constexpr double alpha = 20.0;
     //! maximal absolute rotation
     static constexpr double rotation = 0.2;
     //! maximal horizontal scaling (percent)
-    static constexpr double scaleX = 0.25;
+    static constexpr double scaleX = 0.1;
     //! maximal vertical scaling (percent)
-    static constexpr double scaleY = 0.25;
+    static constexpr double scaleY = 0.1;
 
     //! has to be odd (actually it just works a bit better that way)
     static constexpr int gaussKernelSize = 21;
@@ -83,7 +83,7 @@ public:
     
         double ratio = double(rows)/cols;
         
-        //stard with random matrices
+        //start with random matrices
         distX = arma::randu(rows,cols)*2-1;
         distY = arma::randu(rows,cols)*2-1;
         
@@ -125,7 +125,7 @@ public:
         const int rows = input.n_rows;
         const int cols = input.n_cols;
         arma::mat instance = input;
-        arma::mat kernel = genGaussian(5,0.1);
+        arma::mat kernel = genGaussian(5,0.01);
         
         int gcs2 = kernel.n_rows/2;
         int gk = kernel.n_rows;
