@@ -13,9 +13,9 @@ struct {
     uint32_t top,
     uint32_t left,
     uint32_t bottom,
-    uint32_t right,S
+    uint32_t right,
     size_t objClass,
-    double votes,
+    double distance,
 } ImageLabel;
 
 
@@ -34,11 +34,11 @@ private:
     size_t strideX;
     size_t strideY;
     
-    std::vector<arma::cube> tableData;
+    std::vector<arma::Cube<uint8_t>> tableData;
     std::vector<uint16_t> tableLabels;
     
     //heap based distance sorting - much faster than naive sorting as we don't evaluate half the queries a lot of the time
-    std::vector<std::pair<uint16_t,double>> distSortCandidates (const arma::cube& img, const size_t& x, const size_t& y, const std::set<uint16_t>& candidates) {
+    std::vector<std::pair<uint16_t,double>> distSortCandidates (const arma::Cube<uint8_t>& img, const size_t& x, const size_t& y, const std::set<uint16_t>& candidates) {
         
         //make a result vector
         std::vector<std::pair<uint16_t,double>> results;
@@ -85,8 +85,9 @@ public:
         ;
     }
     
-    void insert(const std::vector<arma::cube>& queryData, const std::vector<uint16_t>& queryLabels) {
-        arma::mat qhashes = arma::mat(TABLES,queryData.size);
+    void insert(const std::vector<arma::Cube<uint8_t>>& queryData, const std::vector<uint16_t>& queryLabels) {
+        //this is the insert for adding data for classification
+        arma::umat qhashes = arma::umat(TABLES,queryData.size);
         for (size_t i = 0; i < TABLES; ++i) {
             for (size_t j = 0; j < queryData.size; ++j) {
                 qhashes(i,j) = hashFns[i].getHash(queryData[j]);
@@ -97,7 +98,25 @@ public:
         tableLabels = queryLabels;
     }
     
-    std::vector<ImageLabel> query(const arma::cube& image) {
+    void insert(const arma::Cube<uint8_t>& imageThreshold) {
+        //this is the insert for doing point matching between frames
+        arma::umat qhashes = arma::umat(TABLES,(image.n_rows-windowSizeX)/strideX*(image.n_cols-windowSizeY)/strideY);
+        size_t c = 0
+        for (size_t i = 0; i < TABLES; ++i) {
+            for (size_t j = 0; j < image.n_rows-windowSizeX; j+=strideX) {
+                for (size_t k = 0; k < image.n_cols-windowSizeY; k+=strideY) {
+                    qhashes(i,c) = hashFns[i].getHash(imageThreshold,j,k);
+                    ++c
+                }
+            }
+        }
+        tables.insert(qhashes);
+        //XXX: make image storage compatible
+        //tableData = imageThreshold;
+        //tableLabels = queryLabels;
+    }
+    
+    std::vector<ImageLabel> query(const arma::Cube<uint8_t>& image,const arma::Cube<uint8_t>& imageThreshold) {
         std::vector<ImageLabel> imageCandidates;
         imageCandidates.reserve(20);
         std::vector<uint16_t> currentHashes;
@@ -107,7 +126,7 @@ public:
                 
                 //generate all the hashes for a patch
                 for (size_t k = 0; k < TABLES; ++k) {
-                    currentHashes[k] = hashFns[i].getHash(image,i,j);
+                    currentHashes[k] = hashFns[i].getHash(imageThreshold,i,j);
                 }
                 
                 //do the lookups and figure out what to label the patch
@@ -115,8 +134,10 @@ public:
                 if (candidates.size > 0) {
                     std::vector<std::pair<uint16_t,double>> result = distSortCandidates(image,i,j,candidates);
                     
-                    //store the result candidate for later processing
-                    imageCandidates.emplace_back(i,j,i+windowSizeX,j+windowSizeY,results[0].first,results[0].second)
+                    //store the first result candidate for later processing
+                    for (size_t k = 0; k < NEIGHBOURs; ++k) {
+                        imageCandidates.emplace_back(i,j,i+windowSizeX,j+windowSizeY,results[k].first,results[k].second);
+                    }
                 }
             }
         }

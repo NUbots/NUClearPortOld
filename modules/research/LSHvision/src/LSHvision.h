@@ -41,9 +41,7 @@ namespace modules {
          */
         class LSHvision : public NUClear::Reactor {
         private:
-            std::vector<uint16_t[65536]> lshtables;
-            std::vector<uint16_t[65536]> lshlists;
-            std::vector<uint16_t[65536]> lshhashes;
+            ImageHasher hasher;
         public:
             explicit LSHvision(std::unique_ptr<NUClear::Environment> environment);
         };

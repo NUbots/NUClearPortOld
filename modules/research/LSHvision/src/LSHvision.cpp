@@ -18,6 +18,7 @@
  */
 
 #include "LSHvision.h"
+#include "ImageHasher.h"
 
 namespace modules {
     namespace research {
@@ -31,12 +32,15 @@ namespace modules {
         LSHvision::LSHvision(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)), greenHorizon(), scanLines() { 
 			currentLUTIndex = 0;
 			
-            on<Trigger<Configuration<VisionConstants>>>([this](const Configuration<VisionConstants>& constants) {
+            /*on<Trigger<Configuration<VisionConstants>>>([this](const Configuration<VisionConstants>& constants) {
            		//std::cout<< "Loading VisionConstants."<<std::endl;
            		//std::cout<< "Finished Config Loading successfully."<<std::endl;
-            });
+            });*/
 
             on<Trigger<Image>, With<Raw<Image>>, Options<Single>>([this](const Image& image, const std::shared_ptr<const Image>& image_ptr) {
+            	
+            	arma::Cube<uint8_t> img(image_ptr, Image.y, 3, Image.x, copy_aux_mem = true, strict = true);
+            	//XXX: threshold image into a cube
             	
 
             	//emit(std::move(classifiedImage));
