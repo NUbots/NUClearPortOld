@@ -21,15 +21,21 @@
 
 #include <armadillo>
 #include "messages/vision/ClassifiedImage.h"
+#include "messages/support/Configuration.h"
 
 namespace modules {
 namespace vision {
 
     using messages::vision::ObjectClass;
     using messages::vision::ClassifiedImage;
+    using messages::support::Configuration;
 
     ObstacleDetector::ObstacleDetector(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)) {
+
+        on<Trigger<Configuration<ObstacleDetector>>>([this](const Configuration<ObstacleDetector>& config) {
+            MINIMUM_SEGMENTS_FOR_OBSTACLE = config["minimum_segments_for_obstacle"].as<uint>();
+        });
 
         on<Trigger<ClassifiedImage<ObjectClass>>, Options<Single>>("Obstacle Detector", [this](const ClassifiedImage<ObjectClass>& image) {
 
@@ -45,32 +51,35 @@ namespace vision {
             for(int i = 0; i < 6; ++i) {
 
                 auto segments = i == 0 ? image.horizontalSegments.equal_range(ObjectClass::UNKNOWN)
-                              : i == 1 ? image.verticalSegments.equal_range(ObjectClass::UNKNOWN)
-                              : i == 2 ? image.horizontalSegments.equal_range(ObjectClass::CYAN_TEAM)
-                              : i == 3 ? image.verticalSegments.equal_range(ObjectClass::CYAN_TEAM)
-                              : i == 4 ? image.horizontalSegments.equal_range(ObjectClass::MAGENTA_TEAM)
+                              : i == 1 ? image.horizontalSegments.equal_range(ObjectClass::CYAN_TEAM)
+                              : i == 2 ? image.horizontalSegments.equal_range(ObjectClass::MAGENTA_TEAM)
+                              : i == 3 ? image.verticalSegments.equal_range(ObjectClass::UNKNOWN)
+                              : i == 4 ? image.verticalSegments.equal_range(ObjectClass::CYAN_TEAM)
                               :          image.verticalSegments.equal_range(ObjectClass::MAGENTA_TEAM);
-
-                auto colour = i == 0 ? ObjectClass::UNKNOWN
-                            : i == 1 ? ObjectClass::UNKNOWN
-                            : i == 2 ? ObjectClass::CYAN_TEAM
-                            : i == 3 ? ObjectClass::CYAN_TEAM
-                            : i == 4 ? ObjectClass::MAGENTA_TEAM
-                            :          ObjectClass::MAGENTA_TEAM;
 
                 for(auto it = segments.first; it != segments.second; ++it) {
 
                     auto& start = it->second.start;
                     auto& end = it->second.end;
 
-                    // Push back starts only if we are a horizontal segment
-                    if(it->second.previous && image.visualHorizonAtPoint(start[0]) < start[1] && !(i % 2)) {
-                        points.push_back({ start, 1, colour });
-                    }
-
-                    // Check if we have a subsequent segment
-                    if(it->second.next && image.visualHorizonAtPoint(end[0]) < end[1]) {
-                        points.push_back({ end, !(i % 2) ? -1 : 0, colour });
+                    // Check this segment is large enough to be considered (at least 2 blocks)
+                    if(it->second.length > it->second.subsample) {
+                        // If we are a vertical segment
+                        if(i > 2) {
+                            // If our end is below the visual horizon
+                            if(it->second.next && image.visualHorizonAtPoint(end[0]) < end[1]) {
+                                points.push_back({ end, 0, it->first });
+                            }
+                        }
+                        // If we are a horizontal segment
+                        else {
+                            // If either end is below the visual horizon, we also only use subsampled horizontal lines
+                            if(it->second.subsample > 1
+                                && (image.visualHorizonAtPoint(start[0]) < start[1] || image.visualHorizonAtPoint(end[0]) < end[1])) {
+                                points.push_back({ start, 1, it->first });
+                                points.push_back({ end, -1, it->first });
+                            }
+                        }
                     }
                 }
             }
@@ -80,26 +89,35 @@ namespace vision {
                 return a.point[0] < b.point[0];
             });
 
-            int counter = 0;
+            uint counter = 0;
             std::vector<PointData>::iterator start;
             std::vector<PointData>::iterator end;
             for(auto it = points.begin(); it != points.end(); ++it) {
                 // We add to the counter what our transition is
                 counter += it->direction;
 
-                if(counter == MINIMUM_SEGMENTS_FOR_OBSTACLE && points->direction == 1) {
+                if(counter == MINIMUM_SEGMENTS_FOR_OBSTACLE && it->direction == 1) {
                     // Start tracking our segments
                     start = it;
                 }
-                else if(counter == MINIMUM_SEGMENTS_FOR_OBSTACLE && points->direction == -1) {
-                    // Build our obstacle by doing a hull of some sort from the highest point
+                else if(counter == MINIMUM_SEGMENTS_FOR_OBSTACLE - 1 && it->direction == -1) {
+                    end = it;
+                    auto top = std::max_element(start, end, [] (const PointData& a, const PointData& b) {
+                        return a.point[1] < b.point[1];
+                    });
+
+                    std::cout << "Found an obstacle" << std::endl;
+
+                    // Build our left side
+                    for(auto pt = top; pt != start; --pt) {
+                        // Check the turn we make to the previous point
+                    }
+
+                    // Build our right side
+                    for(auto pt = top; pt != end; ++pt) {
+                        // Check the turn we make to the next point
+                    }
                 }
-
-                // If we are at the boundry and we just added one
-                // Start appending points
-
-                // if we are at the boundry and we just subtracted one
-                // Build the obstacle
             }
 
             //JAKE's Vision Kinematics for distance to obstacle:

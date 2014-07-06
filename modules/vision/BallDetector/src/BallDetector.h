@@ -31,8 +31,8 @@ namespace vision {
         uint MAXIMUM_ITERATIONS_PER_FITTING;
         uint MAXIMUM_FITTED_MODELS;
         double CONSENSUS_ERROR_THRESHOLD;
-    public:
 
+    public:
         static constexpr const char* CONFIGURATION_PATH = "BallDetector.yaml";
 
         /// @brief Called by the powerplant to build and setup the BallDetector reactor.

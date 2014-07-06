@@ -26,7 +26,12 @@ namespace modules {
 namespace vision {
 
     class ObstacleDetector : public NUClear::Reactor {
+    private:
+        uint MINIMUM_SEGMENTS_FOR_OBSTACLE;
+
     public:
+        static constexpr const char* CONFIGURATION_PATH = "ObstacleDetector.yaml";
+
         /// @brief Called by the powerplant to build and setup the ObstacleDetector reactor.
         explicit ObstacleDetector(std::unique_ptr<NUClear::Environment> environment);
     };
