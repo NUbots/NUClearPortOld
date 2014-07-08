@@ -43,12 +43,15 @@ namespace utility {
                 static constexpr uint WX = 4;   // Our rotational velocity around x
                 static constexpr uint WY = 5;   // Our rotational velocity around y
                 static constexpr uint WZ = 6;   // Our rotational velcoity around z
-                static constexpr uint VX = 7;   // Our translational velocity in X
-                static constexpr uint VY = 8;   // Our translational velocity in Y
-                static constexpr uint VZ = 9;   // Our translational velocity in Z
-                static constexpr uint AX = 10;  // Our translational acceleration in X
-                static constexpr uint AY = 11;  // Our translational acceleration in Y
-                static constexpr uint AZ = 12;  // Our translational acceleration in Z
+                static constexpr uint PX = 7;   // Our position in X
+                static constexpr uint PY = 8;   // Our position in Y
+                static constexpr uint PZ = 9;   // Our position in Z
+                static constexpr uint VX = 10;  // Our translational velocity in X
+                static constexpr uint VY = 11;  // Our translational velocity in Y
+                static constexpr uint VZ = 12;  // Our translational velocity in Z
+                static constexpr uint AX = 13;  // Our translational acceleration in X
+                static constexpr uint AY = 14;  // Our translational acceleration in Y
+                static constexpr uint AZ = 15;  // Our translational acceleration in Z
 
                 struct MeasurementType {
                     struct GYROSCOPE {};
