@@ -33,6 +33,7 @@
 #include "MMKFRobotLocalisationEngine.h"
 #include "RobotModel.h"
 
+using utility::math::angle::bearingToUnitVector;
 using utility::nubugger::graph;
 using utility::localisation::LocalisationFieldObject;
 using messages::support::Configuration;
@@ -40,6 +41,8 @@ using messages::support::FieldDescription;
 using messages::localisation::FakeOdometry;
 using messages::input::Sensors;
 using modules::localisation::MultiModalRobotModelConfig;
+using messages::localisation::Mock;
+using messages::localisation::Self;
 
 namespace modules {
 namespace localisation {
@@ -70,21 +73,30 @@ namespace localisation {
         on<Trigger<Every<100, std::chrono::milliseconds>>,
            Options<Sync<MMKFRobotLocalisation>>
            >("NUbugger Output", [this](const time_t&) {
-            auto robot_msg = std::make_unique<std::vector<messages::localisation::Self>>();
-
+            
+            auto robots = std::vector<Self>();
+            
             for (auto& model : engine_->robot_models_.hypotheses()) {
                 arma::vec::fixed<localisation::robot::RobotModel::size> model_state = model->GetEstimate();
                 auto model_cov = model->GetCovariance();
 
-                messages::localisation::Self robot_model;
-                robot_model.position = model_state.rows(0, 1);
-                robot_model.heading = model_state.rows(2, 3);
+                Self robot_model;
+                robot_model.position = model_state.rows(robot::kX, robot::kY);
+                robot_model.heading = bearingToUnitVector(model_state(robot::kHeading));
                 robot_model.sr_xx = model_cov(0, 0);
                 robot_model.sr_xy = model_cov(0, 1);
                 robot_model.sr_yy = model_cov(1, 1);
-                robot_msg->push_back(robot_model);
+                robots.push_back(robot_model);
             }
-            emit(std::move(robot_msg));
+
+            if (engine_->CanEmitFieldObjects()) {
+                auto robot_msg = std::make_unique<std::vector<Self>>(robots);
+                emit(std::move(robot_msg));
+            } else {
+                auto mock_robots = Mock<std::vector<Self>>(robots);
+                auto mock_robot_msg = std::make_unique<Mock<std::vector<Self>>>(mock_robots);
+                emit(std::move(mock_robot_msg));
+            }
         });
 
         on<Trigger<FakeOdometry>,
@@ -93,18 +105,17 @@ namespace localisation {
             auto curr_time = NUClear::clock::now();
             engine_->TimeUpdate(curr_time, odom);
         });
-        // on<Trigger<Every<100, Per<std::chrono::seconds>>>,
-        //    Options<Sync<MMKFRobotLocalisation>>
-        //   >("MMKFRobotLocalisation Time", [this](const time_t&) {
-        //     auto curr_time = NUClear::clock::now();
-        //     engine_->TimeUpdate(curr_time);
-        // });
-
         on<Trigger<Sensors>,
            Options<Sync<MMKFRobotLocalisation>>
           >("MMKFRobotLocalisation Odometry", [this](const Sensors& sensors) {
             auto curr_time = NUClear::clock::now();
             engine_->TimeUpdate(curr_time, sensors);
+        });
+        on<Trigger<Every<100, Per<std::chrono::seconds>>>,
+           Options<Sync<MMKFRobotLocalisation>>
+          >("MMKFRobotLocalisation Time", [this](const time_t&) {
+            auto curr_time = NUClear::clock::now();
+            engine_->TimeUpdate(curr_time);
         });
 
         on<Trigger<std::vector<messages::vision::Goal>>,

@@ -17,20 +17,5 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
-#ifndef MODULES_MOCAP_TEST_H
-#define MODULES_MOCAP_TEST_H
-
-#include <nuclear>
-
-namespace modules {
-    namespace support {
-
-        class MocapTest : public NUClear::Reactor {
-        public:
-            explicit MocapTest(std::unique_ptr<NUClear::Environment> environment);
-        };
-
-    }
-}
-#endif
-
+#define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
+#include <catch.hpp>
