@@ -28,6 +28,7 @@
 #include "messages/support/Configuration.h"
 #include "messages/localisation/FieldObject.h"
 #include "utility/localisation/transform.h"
+#include "messages/motion/WalkCommand.h"
 #include "messages/input/Sensors.h"
 #include "messages/input/ServoID.h"
 
@@ -79,6 +80,7 @@ namespace localisation {
         cfg_.simulate_ball_observations = config["SimulateBallObservations"].as<bool>();
         cfg_.simulate_odometry = config["SimulateOdometry"].as<bool>();
         cfg_.simulate_robot_movement = config["SimulateRobotMovement"].as<bool>();
+        cfg_.simulate_robot_walking = config["SimulateRobotWalking"].as<bool>();
         cfg_.robot_movement_path_period = config["RobotMovementPathPeriod"].as<double>();
         cfg_.simulate_ball_movement = config["SimulateBallMovement"].as<bool>();
         cfg_.emit_robot_fieldobjects = config["EmitRobotFieldobjects"].as<bool>();
@@ -137,6 +139,29 @@ namespace localisation {
             double imu_period = cfg_.robot_imu_drift_period;
             world_imu_direction = { std::cos(2 * M_PI * t / imu_period),
                                     std::sin(2 * M_PI * t / imu_period) };
+        });
+
+        // Simulate robot walking
+        on<Trigger<Every<10, std::chrono::milliseconds>>,
+            With<Optional<messages::motion::WalkCommand>>,
+            Options<Sync<MockRobot>>>("Mock Robot walking",
+            [this](const time_t&,
+                   const std::shared_ptr<const messages::motion::WalkCommand>& walk) {
+
+            if (!cfg_.simulate_robot_walking) {
+                return;
+            }
+
+            // Update position
+            if (walk != NULL) {
+                std::cerr << __LINE__ << std::endl;
+                robot_position_[0] += (walk->velocity[0]*cos(robot_heading_) - walk->velocity[1]*sin(robot_heading_)) * 0.015;
+                std::cerr << __LINE__ << std::endl;
+                robot_position_[1] += (walk->velocity[0]*sin(robot_heading_) + walk->velocity[1]*cos(robot_heading_)) * 0.015;
+                std::cerr << __LINE__ << std::endl;
+                robot_heading_ += (walk->rotationalSpeed) * 0.1;
+                std::cerr << __LINE__ << std::endl;
+            }
         });
 
         // Update ball position

@@ -58,6 +58,7 @@ namespace localisation {
             bool simulate_ball_observations = true;
             bool simulate_odometry = false;
             bool simulate_robot_movement = true;
+            bool simulate_robot_walking = false;
             double robot_movement_path_period = 100;
             bool simulate_ball_movement = true;
             bool emit_robot_fieldobjects = true;
