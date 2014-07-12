@@ -5,7 +5,7 @@ ADD_ROLE(
         support::SignalCatcher
         support::logging::ConsoleLogHandler
         support::configuration::ConfigSystem
-#       support::configuration::NetworkingConfiguration
+        support::configuration::NetworkingConfiguration
         support::NUbugger
         support::configuration::SoccerConfig
 
@@ -13,9 +13,9 @@ ADD_ROLE(
         input::GameController
 
         #Sensors
-        input::LinuxCamera
+#       input::LinuxCamera
 #       platform::darwin::HardwareIO
-#       platform::darwin::SensorFilter
+        platform::darwin::SensorFilter
 
         #Vision
         vision::LUTClassifier
@@ -26,7 +26,7 @@ ADD_ROLE(
         #Localisation
         localisation::MockRobot
         localisation::MMKFRobotLocalisation
-#       localisation::KFBallLocalisation
+        localisation::KFBallLocalisation
 
         #Behaviour
         behaviour::Controller
@@ -35,8 +35,8 @@ ADD_ROLE(
         behaviour::skills::Getup
         behaviour::skills::Look
         behaviour::skills::KickScript
-        behaviour::planning::LookAtBall
-        behaviour::planning::LookAtGoal
+#        behaviour::planning::LookAtBall
+#        behaviour::planning::LookAtGoal
         behaviour::planning::KickPlanner
         behaviour::planning::WalkPathPlanner
         behaviour::strategy::SoccerStrategy
@@ -46,5 +46,5 @@ ADD_ROLE(
         motion::WalkEngine
 
         #Output
-        output::eSpeak
+#        output::eSpeak
 )
