@@ -180,9 +180,9 @@ namespace localisation {
             if (!cfg_.simulate_game_controller) {
                 return;
             }
-
+std::cerr << __func__ << __LINE__ << std::endl;
             auto gameState = std::make_unique<messages::input::gameevents::GameState>();
-
+std::cerr << __func__ << __LINE__ << std::endl;
             // Set up game state
             switch(cfg_.gc_phase) {
                 case 1:
@@ -205,6 +205,7 @@ namespace localisation {
                     gameState->phase = Phase::INITIAL;
                     break;
             }
+std::cerr << __func__ << __LINE__ << std::endl;
             switch(cfg_.gc_mode) {
                 case 1:
                     gameState->mode = Mode::PENALTY_SHOOTOUT;
@@ -217,12 +218,13 @@ namespace localisation {
                     gameState->mode = Mode::OVERTIME;
                     break;
             }
+std::cerr << __func__ << __LINE__ << std::endl;
             gameState->firstHalf = cfg_.gc_first_half;
             gameState->kickedOutByUs = cfg_.gc_kicked_out_by_us;
             gameState->ourKickOff = cfg_.gc_our_kick_off;
             gameState->team.teamId = cfg_.gc_team_id;
             gameState->opponent.teamId = cfg_.gc_opponent_id;
-
+std::cerr << __func__ << __LINE__ << std::endl;
             // Players
             gameState->team.players.clear();
             gameState->team.players.push_back({
@@ -230,7 +232,7 @@ namespace localisation {
                 PenaltyReason::UNPENALISED,
                 NUClear::clock::now()
             });
-
+std::cerr << __func__ << __LINE__ << std::endl;
             switch(cfg_.gc_penalty_reason) {
                 case 1:
                     gameState->team.players.at(0).penaltyReason = PenaltyReason::BALL_MANIPULATION;
@@ -264,8 +266,9 @@ namespace localisation {
                     gameState->team.players.at(0).penaltyReason = PenaltyReason::UNPENALISED;
                     break;
             }
-
+std::cerr << __func__ << __LINE__ << std::endl;
             emit(std::move(gameState));
+std::cerr << __func__ << __LINE__ << std::endl;
         });
 
         // Update ball position

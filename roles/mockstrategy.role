@@ -10,7 +10,7 @@ ADD_ROLE(
         support::configuration::SoccerConfig
 
         #input
-        input::GameController
+#        input::GameController
 
         #Sensors
 #       input::LinuxCamera
@@ -35,8 +35,10 @@ ADD_ROLE(
         behaviour::skills::Getup
         behaviour::skills::Look
         behaviour::skills::KickScript
+
 #        behaviour::planning::LookAtBall
 #        behaviour::planning::LookAtGoal
+
         behaviour::planning::KickPlanner
         behaviour::planning::WalkPathPlanner
         behaviour::strategy::SoccerStrategy
