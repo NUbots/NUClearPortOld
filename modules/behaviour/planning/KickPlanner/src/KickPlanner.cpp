@@ -53,7 +53,7 @@ namespace planning {
         });
 
         on< Trigger<Ball>, With<std::vector<Self>>, With<std::vector<messages::vision::Ball>>, With<KickPlan> >([this] (
-            const Ball& ball, 
+            const Ball& ball,
             const std::vector<Self>& selfs, 
             const std::vector<messages::vision::Ball>& vision_balls,
             const KickPlan& kickPlan) {
@@ -81,6 +81,7 @@ namespace planning {
 
                 float targetBearing = std::atan2(kickTarget[1],kickTarget[0]);
                 //NUClear::log("targetBearing = ", targetBearing);
+
                 if( std::fabs(targetBearing) < KICK_FORWARD_ANGLE_LIMIT){
                     if(ball.position[1] < 0){
                         // Right front kick
