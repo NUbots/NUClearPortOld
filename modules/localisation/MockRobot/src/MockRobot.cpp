@@ -31,6 +31,7 @@
 #include "messages/motion/WalkCommand.h"
 #include "messages/input/Sensors.h"
 #include "messages/input/ServoID.h"
+#include "messages/input/gameevents/GameEvents.h"
 
 using messages::input::Sensors;
 using messages::input::ServoID;
@@ -47,6 +48,10 @@ using messages::support::Configuration;
 using messages::support::FieldDescription;
 using modules::localisation::MockRobotConfig;
 using messages::localisation::Mock;
+using messages::input::gameevents::GameState;
+using messages::input::gameevents::Phase;
+using messages::input::gameevents::Mode;
+using messages::input::gameevents::PenaltyReason;
 
 namespace modules {
 namespace localisation {
@@ -81,6 +86,7 @@ namespace localisation {
         cfg_.simulate_odometry = config["SimulateOdometry"].as<bool>();
         cfg_.simulate_robot_movement = config["SimulateRobotMovement"].as<bool>();
         cfg_.simulate_robot_walking = config["SimulateRobotWalking"].as<bool>();
+        cfg_.simulate_game_controller = config["SimulateRobotWalking"].as<bool>();
         cfg_.robot_movement_path_period = config["RobotMovementPathPeriod"].as<double>();
         cfg_.simulate_ball_movement = config["SimulateBallMovement"].as<bool>();
         cfg_.emit_robot_fieldobjects = config["EmitRobotFieldobjects"].as<bool>();
@@ -89,6 +95,16 @@ namespace localisation {
         cfg_.observe_left_goal = config["ObserveLeftGoal"].as<bool>();
         cfg_.observe_right_goal = config["ObserveRightGoal"].as<bool>();
         cfg_.distinguish_left_and_right_goals = config["DistinguishLeftAndRightGoals"].as<bool>();
+
+        // Game Controller
+        cfg_.gc_first_half = config["GCFirstHalf"].as<bool>();
+        cfg_.gc_kicked_out_by_us = config["GCKickedOutByUs"].as<bool>();
+        cfg_.gc_our_kick_off = config["GCOurKickOff"].as<bool>();
+        cfg_.gc_mode = config["GCMode"].as<int>();
+        cfg_.gc_phase = config["GCPhase"].as<int>();
+        cfg_.gc_penalty_reason = config["GCPenaltyReason"].as<int>();
+        cfg_.gc_team_id = config["GCTeamID"].as<int>();
+        cfg_.gc_opponent_id = config["GCOpponentID"].as<int>();
     }
 
     MockRobot::MockRobot(std::unique_ptr<NUClear::Environment> environment)
@@ -156,6 +172,100 @@ namespace localisation {
                 robot_heading_ += (walk->rotationalSpeed) * 0.1;
                 std::cerr << __LINE__ << std::endl;
             }
+        });
+
+        // Simulate game controller
+        on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Game Controller", [this](const time_t&){
+
+            if (!cfg_.simulate_game_controller) {
+                return;
+            }
+
+            auto gameState = std::make_unique<messages::input::gameevents::GameState>();
+
+            // Set up game state
+            switch(cfg_.gc_phase) {
+                case 1:
+                    gameState->phase = Phase::READY;
+                    break;
+                case 2:
+                    gameState->phase = Phase::SET;
+                    break;
+                case 3:
+                    gameState->phase = Phase::PLAYING;
+                    break;
+                case 4:
+                    gameState->phase = Phase::TIMEOUT;
+                    break;
+                case 5:
+                    gameState->phase = Phase::FINISHED;
+                    break;
+                case 0:
+                default:
+                    gameState->phase = Phase::INITIAL;
+                    break;
+            }
+            switch(cfg_.gc_mode) {
+                case 1:
+                    gameState->mode = Mode::PENALTY_SHOOTOUT;
+                    break;
+                case 2:
+                    gameState->mode = Mode::NORMAL;
+                    break;
+                case 0:
+                default:
+                    gameState->mode = Mode::OVERTIME;
+                    break;
+            }
+            gameState->firstHalf = cfg_.gc_first_half;
+            gameState->kickedOutByUs = cfg_.gc_kicked_out_by_us;
+            gameState->ourKickOff = cfg_.gc_our_kick_off;
+            gameState->team.teamId = cfg_.gc_team_id;
+            gameState->opponent.teamId = cfg_.gc_opponent_id;
+
+            // Players
+            gameState->team.players.clear();
+            gameState->team.players.push_back({
+                0,
+                PenaltyReason::UNPENALISED,
+                NUClear::clock::now()
+            });
+
+            switch(cfg_.gc_penalty_reason) {
+                case 1:
+                    gameState->team.players.at(0).penaltyReason = PenaltyReason::BALL_MANIPULATION;
+                    break;
+                case 2:
+                    gameState->team.players.at(0).penaltyReason = PenaltyReason::PHYSICAL_CONTACT;
+                    break;
+                case 3:
+                    gameState->team.players.at(0).penaltyReason = PenaltyReason::ILLEGAL_ATTACK;
+                    break;
+                case 4:
+                    gameState->team.players.at(0).penaltyReason = PenaltyReason::ILLEGAL_DEFENSE;
+                    break;
+                case 5:
+                    gameState->team.players.at(0).penaltyReason = PenaltyReason::REQUEST_FOR_PICKUP;
+                    break;
+                case 6:
+                    gameState->team.players.at(0).penaltyReason = PenaltyReason::REQUEST_FOR_SERVICE;
+                    break;
+                case 7:
+                    gameState->team.players.at(0).penaltyReason = PenaltyReason::REQUEST_FOR_PICKUP_TO_SERVICE;
+                    break;
+                case 8:
+                    gameState->team.players.at(0).penaltyReason = PenaltyReason::SUBSTITUTE;
+                    break;
+                case 9:
+                    gameState->team.players.at(0).penaltyReason = PenaltyReason::MANUAL;
+                    break;
+                case 0:
+                default:
+                    gameState->team.players.at(0).penaltyReason = PenaltyReason::UNPENALISED;
+                    break;
+            }
+
+            emit(std::move(gameState));
         });
 
         // Update ball position

@@ -59,6 +59,7 @@ namespace localisation {
             bool simulate_odometry = false;
             bool simulate_robot_movement = true;
             bool simulate_robot_walking = false;
+            bool simulate_game_controller = false;
             double robot_movement_path_period = 100;
             bool simulate_ball_movement = true;
             bool emit_robot_fieldobjects = true;
@@ -67,6 +68,16 @@ namespace localisation {
             bool observe_left_goal = true;
             bool observe_right_goal = true;
             bool distinguish_left_and_right_goals = true;
+
+            // Game Controller
+            bool gc_first_half;
+            bool gc_kicked_out_by_us;
+            bool gc_our_kick_off;
+            int gc_mode;
+            int gc_phase;
+            int gc_penalty_reason;
+            int gc_team_id;
+            int gc_opponent_id;
         } cfg_;
 
     public:
