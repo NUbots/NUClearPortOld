@@ -110,16 +110,11 @@ namespace localisation {
     MockRobot::MockRobot(std::unique_ptr<NUClear::Environment> environment)
         : Reactor(std::move(environment)) {
 
-        on<Trigger<FieldDescription>>("FieldDescription Update", [this](const FieldDescription& desc) {
-            field_description_ = std::make_shared<FieldDescription>(desc);
+        on<Trigger<Startup>,
+            With<FieldDescription>>("FieldDescription Update",
+            [this](const Startup&, const FieldDescription& desc) {
+               field_description_ = std::make_shared<FieldDescription>(desc);
         });
-
-//        on<Trigger<Startup>,
-//           With<FieldDescription>>("FieldDescription Update",
-//           [this](const Startup&, const FieldDescription& desc) {
-
-//            field_description_ = std::make_shared<FieldDescription>(desc);
-//        });
 
         on<Trigger<Configuration<MockRobotConfig>>>(
             "MockRobotConfig Update",
@@ -130,7 +125,7 @@ namespace localisation {
         // Update robot position
         on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Robot motion", [this](const time_t&){
             if (!cfg_.simulate_robot_movement) {
-                robot_velocity_ = { 0, 0 };
+                //robot_velocity_ = { 0, 0 };
                 return;
             }
 
@@ -169,6 +164,8 @@ namespace localisation {
                 return;
             }
 
+            auto t = absolute_time();
+
             // Update position
             if (walk != NULL) {
                 std::cerr << __LINE__ << std::endl;
@@ -179,6 +176,11 @@ namespace localisation {
                 robot_heading_ += (walk->rotationalSpeed) * 0.1;
                 std::cerr << __LINE__ << std::endl;
             }
+
+            double imu_period = cfg_.robot_imu_drift_period;
+            world_imu_direction = { std::cos(2 * M_PI * t / imu_period),
+                                    std::sin(2 * M_PI * t / imu_period) };
+
         });
 
         // Simulate game controller
@@ -187,9 +189,9 @@ namespace localisation {
             if (!cfg_.simulate_game_controller) {
                 return;
             }
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
             auto gameState = std::make_unique<messages::input::gameevents::GameState>();
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
             // Set up game state
             switch(cfg_.gc_phase) {
                 case 1:
@@ -212,7 +214,7 @@ namespace localisation {
                     gameState->phase = Phase::INITIAL;
                     break;
             }
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
             switch(cfg_.gc_mode) {
                 case 1:
                     gameState->mode = Mode::PENALTY_SHOOTOUT;
@@ -225,13 +227,13 @@ namespace localisation {
                     gameState->mode = Mode::OVERTIME;
                     break;
             }
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
             gameState->firstHalf = cfg_.gc_first_half;
             gameState->kickedOutByUs = cfg_.gc_kicked_out_by_us;
             gameState->ourKickOff = cfg_.gc_our_kick_off;
             gameState->team.teamId = cfg_.gc_team_id;
             gameState->opponent.teamId = cfg_.gc_opponent_id;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
             // Players
             gameState->team.players.clear();
             gameState->team.players.push_back({
@@ -239,7 +241,7 @@ namespace localisation {
                 PenaltyReason::UNPENALISED,
                 NUClear::clock::now()
             });
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
             switch(cfg_.gc_penalty_reason) {
                 case 1:
                     gameState->team.players.at(0).penaltyReason = PenaltyReason::BALL_MANIPULATION;
@@ -273,9 +275,9 @@ namespace localisation {
                     gameState->team.players.at(0).penaltyReason = PenaltyReason::UNPENALISED;
                     break;
             }
-std::cerr << "emit(std::move(messages::input::gameevents::GameState));" << std::endl;
+
             emit(std::move(gameState));
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
         });
 
         // Update ball position
@@ -427,7 +429,7 @@ std::cerr << "emit(std::move(messages::input::gameevents::GameState));" << std::
 
         // Emit robot to NUbugger
         on<Trigger<Every<100, std::chrono::milliseconds>>,
-           With<Mock<std::vector<messages::localisation::Self>>>,
+           With<std::vector<messages::localisation::Self>>,
            Options<Sync<MockRobot>>>("NUbugger Output",
             [this](const time_t&,
                    const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
@@ -461,14 +463,14 @@ std::cerr << "emit(std::move(messages::input::gameevents::GameState));" << std::
             self_marker.sr_xy = 0;
             self_marker.sr_yy = 0.01;
             robots_msg->push_back(self_marker);
-std::cerr << "emit(std::move(std::vector<messages::localisation::Self>));" << std::endl;
+
             emit(std::move(robots_msg));
         });
 
         // Emit ball to Nubugger
         on<Trigger<Every<100, std::chrono::milliseconds>>,
-           With<Mock<messages::localisation::Ball>>,
-           With<Mock<std::vector<messages::localisation::Self>>>,
+           With<messages::localisation::Ball>,
+           With<std::vector<messages::localisation::Self>>,
            Options<Sync<MockRobot>>>("NUbugger Output",
             [this](const time_t&,
                    const Mock<messages::localisation::Ball>& mock_ball,
@@ -497,9 +499,9 @@ std::cerr << "emit(std::move(std::vector<messages::localisation::Self>));" << st
 
             balls_msg->position = ball_pos;
             balls_msg->velocity = ball_velocity_;
-            balls_msg->sr_xx = ball.sr_xx;
-            balls_msg->sr_xy = ball.sr_xy;
-            balls_msg->sr_yy = ball.sr_yy;
+            balls_msg->sr_xx = 0.01;
+            balls_msg->sr_xy = 0;
+            balls_msg->sr_yy = 0.01;
             balls_msg->world_space = true;
 
 //            messages::localisation::Ball ball_marker;

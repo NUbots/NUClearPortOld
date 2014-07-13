@@ -26,7 +26,7 @@ ADD_ROLE(
         #Localisation
         localisation::MockRobot
         localisation::MMKFRobotLocalisation
-#        localisation::KFBallLocalisation
+        localisation::KFBallLocalisation
 
         #Behaviour
 #        behaviour::Controller

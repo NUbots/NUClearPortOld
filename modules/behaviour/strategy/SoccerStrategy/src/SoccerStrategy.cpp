@@ -129,7 +129,6 @@ namespace modules {
 
 				currentState.primaryGameState = GameStatePrimary::INITIAL;
 				currentState.secondaryGameState = GameStateSecondary::NORMAL;
-				currentState.penalised = false;
 
 				stopMoving();
 			});
@@ -216,13 +215,11 @@ namespace modules {
 
 			// Check to see if we are about to kick.
 			on<Trigger<messages::motion::KickCommand>>([this](const messages::motion::KickCommand&) {
-//				emit(std::move(std::make_unique<messages::output::Say>("Kicking")));
 				isKicking = true;
 			});
 
 			// Check to see if the kick has finished.
 			on<Trigger<messages::motion::KickFinished>>([this](const messages::motion::KickFinished&) {
-//				emit(std::move(std::make_unique<messages::output::Say>("Kick finished")));
 				isKicking = false;
 			});
 
@@ -253,25 +250,21 @@ namespace modules {
 			// Check to see if we are looking at the ball.
 			on<Trigger<LookAtBallStart>>([this](const LookAtBallStart&) {
 				lookingAtBall = true;
-std::cerr << "LOOKING AT BALL" << std::endl;
 			});
 
 			// Check to see if we are no longer looking at the ball.
 			on<Trigger<LookAtBallStop>>([this](const LookAtBallStop&) {
 				lookingAtBall = false;
-std::cerr << "NOT LOOKING AT BALL" << std::endl;
 			});
 
 			// Check to see if we are looking at the goals.
 			on<Trigger<LookAtGoalStart>>([this](const LookAtGoalStart&) {
 				lookingAtGoal = true;
-std::cerr << "LOOKING AT GOAL" << std::endl;
 			});
 
 			// Check to see if we are no longer looking at the goals.
 			on<Trigger<LookAtGoalStop>>([this](const LookAtGoalStop&) {
 				lookingAtGoal = false;
-std::cerr << "NOT LOOKING AT GOAL" << std::endl;
 			});
 
 			//Main Loop?
@@ -284,42 +277,38 @@ std::cerr << "NOT LOOKING AT GOAL" << std::endl;
 							const std::vector<messages::localisation::Self>& selfs,
 							const messages::input::gameevents::GameState& gameState
 							) {
-std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Calculate the position of the ball in field coordinates.
 					arma::vec2 globalBallPosition = utility::localisation::transform::RobotToWorldTransform(currentState.position, currentState.heading, currentState.ball.position);
-//std::cerr << __FILE__ << __LINE__ << std::endl;
 
 					// Make a copy of the previous state.
 					memcpy(&previousState, &currentState, sizeof(State));
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Make a copy of the ball.
 					memcpy(&currentState.ball, &ball, sizeof(Ball));
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Store current position and heading.
 					if (selfs.size() > 0) {
-//std::cerr << __FILE__ << __LINE__ << std::endl;
 						currentState.position = selfs.at(0).position;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
 						currentState.heading = selfs.at(0).heading;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
 					}
 					
 					else {
 						std::cerr << "SoccerStrategy - No Self!!!!" << std::endl;
 					}
 
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Parse game controller state infoirmation as well as button pushes.
 					updateGameState(gameState);
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Are we kicking off?
 					currentState.kickOff = gameState.ourKickOff;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Am I the kicker?
 					// Is my start position inside the centre circle?
 					currentState.kicker = ((arma::norm(ZONES.at(MY_ZONE).startPosition, 2) < (FIELD_DESCRIPTION.dimensions.center_circle_diameter / 2)) && (currentState.primaryGameState == GameStatePrimary::READY ||
 								currentState.primaryGameState == GameStatePrimary::SET || currentState.primaryGameState == GameStatePrimary::PLAYING));
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 //					currentState.kicker = ((arma::norm(ZONES.at(MY_ZONE).startPosition, 2) < (FIELD_DESCRIPTION.dimensions.center_circle_diameter / 2)) && (currentState.primaryGameState == GameStatePrimary::READY ||
 //								currentState.primaryGameState == GameStatePrimary::SET || currentState.primaryGameState == GameStatePrimary::PLAYING)) || ((currentState.secondaryGameState == GameStateSecondary::PENALTY_KICK ||
 //								currentState.secondaryGameState == GameStateSecondary::FREE_KICK || currentState.secondaryGameState == GameStateSecondary::GOAL_KICK || currentState.secondaryGameState == GameStateSecondary::CORNER_KICK) &&
@@ -327,32 +316,23 @@ std::cerr << __FILE__ << __LINE__ << std::endl;
 
 					// Have I been picked up?
 					currentState.pickedUp = feetOffGround && !isGettingUp && !isDiving;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
 
 					// Have I been penalised or unpenalised?
 					if (gameState.team.players.at(0).penaltyReason != PenaltyReason::UNPENALISED && !previousState.penalised) {
-						//std::cerr << __FILE__ << __LINE__ << std::endl;
 						currentState.penalised = true;
-						//std::cerr << __FILE__ << __LINE__ << std::endl;
 						emit(std::move(std::make_unique<messages::output::Say>("Penalised")));
-						//std::cerr << __FILE__ << __LINE__ << std::endl;
+						
 					}
-					else if(gameState.team.players.at(0).penaltyReason == PenaltyReason::UNPENALISED && previousState.penalised) {
-						//std::cerr << __FILE__ << __LINE__ << std::endl;
+
+					else if (gameState.team.players.at(0).penaltyReason == PenaltyReason::UNPENALISED && previousState.penalised) {
 						currentState.penalised = false;
-						//std::cerr << __FILE__ << __LINE__ << std::endl;
 						emit(std::move(std::make_unique<messages::output::Say>("Unpenalised")));
-						//std::cerr << __FILE__ << __LINE__ << std::endl;
+						
 					}
 
 					// Am I in my zone?
-					//std::cerr << __FILE__ << __LINE__ << std::endl;
-					std::cerr << currentState.position[0] << ", " << currentState.position[1] << std::endl;
-					//std::cerr << __FILE__ << __LINE__ << std::endl;
 					try {
-						//std::cerr << __FILE__ << __LINE__ << std::endl;
 						currentState.selfInZone = ZONES.at(MY_ZONE).zone.pointContained(currentState.position);
-						//std::cerr << __FILE__ << __LINE__ << std::endl;
 					}
 
 					catch (const std::domain_error& e) {
@@ -360,44 +340,44 @@ std::cerr << __FILE__ << __LINE__ << std::endl;
 						std::cerr << "selfPosition - (" << currentState.position[0] << ", " << currentState.position[1] << ")" << std::endl;
 						std::cerr << "MY_ZONE - (" << MY_ZONE << std::endl;
 					}
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Can I see the ball?
 					currentState.ballSeen = ((currentState.ball.sr_xx < BALL_CERTAINTY_THRESHOLD) && (currentState.ball.sr_xy < BALL_CERTAINTY_THRESHOLD) && (currentState.ball.sr_yy < BALL_CERTAINTY_THRESHOLD));
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Is the ball lost?
 					currentState.ballLost = !currentState.ballSeen;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Has the ball moved?
 					currentState.ballHasMoved = arma::norm(currentState.ball.position - previousState.ball.position, 2) > BALL_MOVEMENT_THRESHOLD;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Is the ball in my zone?
 					currentState.ballInZone = !currentState.ballLost && ZONES.at(MY_ZONE).zone.pointContained(globalBallPosition);
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Are the goals in range?
 					// x = 0 = centre field.
 					// Assumption: We could potentially kick a goal if we are in the other half of the field.
 					// Assumption: goal.position is the x, y coordinates of the goals relative to us.
 					currentState.goalInRange = (!currentState.ballLost && (arma::norm(currentState.ball.position, 2) < MAX_BALL_DISTANCE) && (globalBallPosition[0] > 0));
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Perform calculations to see if we have reached the assigned target position and heading.
 					arma::vec2 selfToPoint = currentState.targetHeading - currentState.position;
 					arma::vec2 selfRotation = currentState.heading - currentState.position;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					double selfToPointAngle = std::atan2(selfToPoint[1], selfToPoint[0]);
 					double selfAngle = std::atan2(selfRotation[1], selfRotation[0]);
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					currentState.correctHeading = std::fabs(utility::math::angle::normalizeAngle(selfAngle - selfToPointAngle)) < ANGLE_THRESHOLD;
 					currentState.inPosition = arma::norm(currentState.position - currentState.targetPosition, 2) < POSITION_THRESHOLD_TIGHT;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					currentState.outOfPosition = (arma::norm(currentState.position - currentState.targetPosition, 2) >= POSITION_THRESHOLD_LOOSE) && previousState.inPosition;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// Am I in position to kick the ball?
 //					bool kickThreshold = arma::norm(currentState.ball.position, 2) < KICK_DISTANCE_THRESHOLD;
 //					bool kickThreshold = arma::norm(currentState.ball.position, 2) < KICK_DISTANCE_THRESHOLD;
 
 //					currentState.kickPosition = (currentState.inPosition && currentState.correctHeading && kickThreshold && !currentState.outOfPosition);
 					currentState.kickPosition = true;
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					// If the balls position, relative to us is (0, 0) then the ball is inside us.
 					// If the balls velocity is (0, 0) then it can not be approaching anything.
 					if (((currentState.ball.position[0] == 0) && (currentState.ball.position[1] == 0)) || ((currentState.ball.velocity[0] == 0) && (currentState.ball.velocity[1] == 0))) {
@@ -411,7 +391,6 @@ std::cerr << __FILE__ << __LINE__ << std::endl;
 						ParametricLine<2> line;
 						arma::vec2 xaxis = {1, 0};
 						arma::vec2 fieldWidth = {-FIELD_DESCRIPTION.dimensions.field_length / 2, 0};
-//std::cerr << __FILE__ << __LINE__ << std::endl;
 
 						try {
 							planeGoal.setFromNormal(xaxis, fieldWidth);
@@ -421,7 +400,7 @@ std::cerr << __FILE__ << __LINE__ << std::endl;
 							std::cerr << "xaxis - (" << xaxis[0] << ", " << xaxis[1] << ")" << std::endl;
 							std::cerr << "fieldWidth - (" << fieldWidth[0] << ", " << fieldWidth[1] << ")" << std::endl;
 						}
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 
 						try {
 //							planeSelf.setFromNormal(globalBallPosition - currentState.position, currentState.position);
@@ -434,10 +413,10 @@ std::cerr << __FILE__ << __LINE__ << std::endl;
 //							std::cerr << "normal - (" << (globalBallPosition - currentState.position)[0] << ", " << (globalBallPosition - currentState.position)[1] << ")" << std::endl;
 							std::cerr << "normal - (" << currentState.ball.position[0] << ", " << currentState.ball.position[1] << ")" << std::endl;
 						}
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 
 						try {
-							line.setFromDirection(utility::localisation::transform::RobotToWorldTransform(currentState.position, currentState.heading, currentState.ball.velocity) - currentState.position, globalBallPosition);
+							line.setFromDirection(arma::vec(utility::localisation::transform::RobotToWorldTransform(currentState.position, currentState.heading, currentState.ball.velocity)) - arma::vec(currentState.position), arma::vec(globalBallPosition));
 						}
 
 						catch (const std::domain_error& e) {
@@ -445,38 +424,35 @@ std::cerr << __FILE__ << __LINE__ << std::endl;
 							std::cerr << "ballPosition - (" << globalBallPosition[0] << ", " << globalBallPosition[1] << ")" << std::endl;
 						}
 
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 						// Is the ball approaching our goals?
 						try {
 							// Throws std::domain_error if there is no intersection.
 							currentState.ballGoalIntersection = planeGoal.intersect(line);
-
 							currentState.ballApproachingGoal = arma::norm(fieldWidth - currentState.ballGoalIntersection, 2) <= (FIELD_DESCRIPTION.dimensions.goal_area_width / 2);
 						}
 
 						catch (const std::domain_error& e) {
 							currentState.ballApproachingGoal = false;
 						}
-//std::cerr << __FILE__ << __LINE__ << std::endl;
 
 
 						// Is the ball heading in my direction?
 						try {
 							// Throws std::domain_error if there is no intersection.
 							currentState.ballSelfIntersection = planeSelf.intersect(line);
-
 							currentState.ballApproaching = arma::norm(currentState.position - currentState.ballSelfIntersection, 2) <= (BALL_SELF_INTERSECTION_REGION / 2);
 						}
 
 						catch (const std::domain_error& e) {
 							currentState.ballApproaching = false;
 						}
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 					}
 
 					// Calculate the optimal zone position.
 					arma::vec2 optimalPosition = findOptimalPosition(ZONES.at(MY_ZONE).zone, globalBallPosition);
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 
 					// ------
 					// Take appropriate action depending on state
@@ -484,24 +460,19 @@ std::cerr << __FILE__ << __LINE__ << std::endl;
 
 					// Stop moving if in the initial, ready or finished states, as well as when picked up
 					if ((currentState.primaryGameState == GameStatePrimary::INITIAL) || (currentState.primaryGameState == GameStatePrimary::SET) || (currentState.primaryGameState == GameStatePrimary::FINISHED) || currentState.pickedUp) {
-//std::cerr << "selfHeading: (" << currentState.heading[0] << ", " << currentState.heading[1] << ")" << std::endl;
 						stopMoving();
-//std::cerr << __FILE__ << __LINE__ << std::endl;
-//						NUClear::log<NUClear::INFO>("Standing still.");
 					}
 
 					// Stop moving and try to localise when penalised
 					else if(currentState.penalised) {
 						stopMoving();
 						findSelf();
-//std::cerr << __FILE__ << __LINE__ << std::endl;
-//						NUClear::log<NUClear::INFO>("I am penalised.");
 					}
 
 					// Move to the start position if in set state
 					else if (currentState.primaryGameState == GameStatePrimary::READY) {
 						arma::vec2 heading = {FIELD_DESCRIPTION.dimensions.field_length / 2, 0};
-//std::cerr << __FILE__ << __LINE__ << std::endl;
+
 						if (isWalking && currentState.inPosition && currentState.correctHeading) {
 							stopMoving();
 						}
@@ -512,8 +483,6 @@ std::cerr << "targetPosition: (" << currentState.targetPosition[0] << ", " << cu
 std::cerr << "GoToPoint(startPosition): (" << ZONES.at(MY_ZONE).startPosition[0] << ", " << ZONES.at(MY_ZONE).startPosition[1] << ")" << std::endl;
 							goToPoint(ZONES.at(MY_ZONE).startPosition, heading);
 						}
-
-//						NUClear::log<NUClear::INFO>("Game is about to start. I should be in my starting position.");
 					}
 
 					// Move to optimal position within zone, if not in zone
@@ -533,7 +502,6 @@ std::cerr << "GoToPoint(optimalPosition): (" << optimalPosition[0] << ", " << op
 						}
 
 						findBall();
-//						NUClear::log<NUClear::INFO>("I am not where I should be. Going there now.");
 					}
 
 					else if ((currentState.secondaryGameState == GameStateSecondary::PENALTY_KICK) && IS_GOALIE && currentState.ballLost) {

@@ -2,9 +2,9 @@ SimulateVision: true
 SimulateGoalObservations: true
 SimulateBallObservations: true
 SimulateOdometry: false
-SimulateRobotMovement: true
-SimulateRobotWalking: false
-SimulateGameController: false
+SimulateRobotMovement: false
+SimulateRobotWalking: true
+SimulateGameController: true
 RobotMovementPathPeriod: 100
 SimulateBallMovement: true
 EmitRobotFieldobjects: true
@@ -34,7 +34,7 @@ GCMode: 0
 # 3 - Playing
 # 4 - Timeout
 # 5 - Finished
-GCPhase: 1
+GCPhase: 0
 
 # Penalty
 # 0 - Unpenalised
