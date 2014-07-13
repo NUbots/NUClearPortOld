@@ -114,6 +114,13 @@ namespace localisation {
             field_description_ = std::make_shared<FieldDescription>(desc);
         });
 
+//        on<Trigger<Startup>,
+//           With<FieldDescription>>("FieldDescription Update",
+//           [this](const Startup&, const FieldDescription& desc) {
+
+//            field_description_ = std::make_shared<FieldDescription>(desc);
+//        });
+
         on<Trigger<Configuration<MockRobotConfig>>>(
             "MockRobotConfig Update",
             [this](const Configuration<MockRobotConfig>& config) {
@@ -175,14 +182,14 @@ namespace localisation {
         });
 
         // Simulate game controller
-        on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Game Controller", [this](const time_t&){
+        on<Trigger<Every<100, std::chrono::milliseconds>>>("Mock Game Controller", [this](const time_t&){
 
             if (!cfg_.simulate_game_controller) {
                 return;
             }
-std::cerr << __func__ << __LINE__ << std::endl;
+//std::cerr << __FILE__ << __LINE__ << std::endl;
             auto gameState = std::make_unique<messages::input::gameevents::GameState>();
-std::cerr << __func__ << __LINE__ << std::endl;
+//std::cerr << __FILE__ << __LINE__ << std::endl;
             // Set up game state
             switch(cfg_.gc_phase) {
                 case 1:
@@ -205,7 +212,7 @@ std::cerr << __func__ << __LINE__ << std::endl;
                     gameState->phase = Phase::INITIAL;
                     break;
             }
-std::cerr << __func__ << __LINE__ << std::endl;
+//std::cerr << __FILE__ << __LINE__ << std::endl;
             switch(cfg_.gc_mode) {
                 case 1:
                     gameState->mode = Mode::PENALTY_SHOOTOUT;
@@ -218,13 +225,13 @@ std::cerr << __func__ << __LINE__ << std::endl;
                     gameState->mode = Mode::OVERTIME;
                     break;
             }
-std::cerr << __func__ << __LINE__ << std::endl;
+//std::cerr << __FILE__ << __LINE__ << std::endl;
             gameState->firstHalf = cfg_.gc_first_half;
             gameState->kickedOutByUs = cfg_.gc_kicked_out_by_us;
             gameState->ourKickOff = cfg_.gc_our_kick_off;
             gameState->team.teamId = cfg_.gc_team_id;
             gameState->opponent.teamId = cfg_.gc_opponent_id;
-std::cerr << __func__ << __LINE__ << std::endl;
+//std::cerr << __FILE__ << __LINE__ << std::endl;
             // Players
             gameState->team.players.clear();
             gameState->team.players.push_back({
@@ -232,7 +239,7 @@ std::cerr << __func__ << __LINE__ << std::endl;
                 PenaltyReason::UNPENALISED,
                 NUClear::clock::now()
             });
-std::cerr << __func__ << __LINE__ << std::endl;
+//std::cerr << __FILE__ << __LINE__ << std::endl;
             switch(cfg_.gc_penalty_reason) {
                 case 1:
                     gameState->team.players.at(0).penaltyReason = PenaltyReason::BALL_MANIPULATION;
@@ -266,9 +273,9 @@ std::cerr << __func__ << __LINE__ << std::endl;
                     gameState->team.players.at(0).penaltyReason = PenaltyReason::UNPENALISED;
                     break;
             }
-std::cerr << __func__ << __LINE__ << std::endl;
+std::cerr << "emit(std::move(messages::input::gameevents::GameState));" << std::endl;
             emit(std::move(gameState));
-std::cerr << __func__ << __LINE__ << std::endl;
+//std::cerr << __FILE__ << __LINE__ << std::endl;
         });
 
         // Update ball position
@@ -454,7 +461,7 @@ std::cerr << __func__ << __LINE__ << std::endl;
             self_marker.sr_xy = 0;
             self_marker.sr_yy = 0.01;
             robots_msg->push_back(self_marker);
-
+std::cerr << "emit(std::move(std::vector<messages::localisation::Self>));" << std::endl;
             emit(std::move(robots_msg));
         });
 
@@ -470,6 +477,7 @@ std::cerr << __func__ << __LINE__ << std::endl;
             auto& robots = mock_robots.data;
 
             if (robots.empty())
+                std::cerr << "no robots" << std::endl;
                 return;
 
             arma::vec2 robot_ball_pos = RobotToWorldTransform(
@@ -485,35 +493,33 @@ std::cerr << __func__ << __LINE__ << std::endl;
             if (!cfg_.emit_ball_fieldobjects)
                 return;
             
-            auto balls_msg = std::make_unique<std::vector<messages::localisation::Ball>>();
+            auto balls_msg = std::make_unique<messages::localisation::Ball>();
 
-            messages::localisation::Ball ball_model;
-            ball_model.position = ball_pos;
-            ball_model.velocity = ball_velocity_;
-            ball_model.sr_xx = ball.sr_xx;
-            ball_model.sr_xy = ball.sr_xy;
-            ball_model.sr_yy = ball.sr_yy;
-            ball_model.world_space = true;
-            balls_msg->push_back(ball_model);
+            balls_msg->position = ball_pos;
+            balls_msg->velocity = ball_velocity_;
+            balls_msg->sr_xx = ball.sr_xx;
+            balls_msg->sr_xy = ball.sr_xy;
+            balls_msg->sr_yy = ball.sr_yy;
+            balls_msg->world_space = true;
 
-            messages::localisation::Ball ball_marker;
-            ball_marker.position = ball_position_;
-            ball_marker.velocity = ball_velocity_;
-            ball_marker.sr_xx = 0.01;
-            ball_marker.sr_xy = 0;
-            ball_marker.sr_yy = 0.01;
-            ball_marker.world_space = true;
-            balls_msg->push_back(ball_marker);
+//            messages::localisation::Ball ball_marker;
+//            ball_marker.position = ball_position_;
+//            ball_marker.velocity = ball_velocity_;
+//            ball_marker.sr_xx = 0.01;
+//            ball_marker.sr_xy = 0;
+//            ball_marker.sr_yy = 0.01;
+//            ball_marker.world_space = true;
+//            balls_msg->push_back(ball_marker);
 
-            messages::localisation::Ball robot_ball;
-            robot_ball.position = robot_ball_pos;
-            robot_ball.velocity = ball_velocity_;
-            robot_ball.sr_xx = 0.01;
-            robot_ball.sr_xy = 0;
-            robot_ball.sr_yy = 0.01;
-            robot_ball.world_space = true;
-            balls_msg->push_back(robot_ball);
-
+//            messages::localisation::Ball robot_ball;
+//            robot_ball.position = robot_ball_pos;
+//            robot_ball.velocity = ball_velocity_;
+//            robot_ball.sr_xx = 0.01;
+//            robot_ball.sr_xy = 0;
+//            robot_ball.sr_yy = 0.01;
+//            robot_ball.world_space = true;
+//            balls_msg->push_back(robot_ball);
+std::cerr << "emit(std::move(std::vector<messages::localisation::Ball>));" << std::endl;
             emit(std::move(balls_msg));
         });
     }
