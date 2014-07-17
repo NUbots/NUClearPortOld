@@ -102,7 +102,7 @@ namespace modules {
             }
 
             void MockRobot::UpdateConfiguration(const messages::support::Configuration<MockRobotConfig>& config) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 cfg_.simulate_vision = config["SimulateVision"].as<bool>();
                 cfg_.simulate_goal_observations = config["SimulateGoalObservations"].as<bool>();
                 cfg_.simulate_ball_observations = config["SimulateBallObservations"].as<bool>();
@@ -151,18 +151,18 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 : Reactor(std::move(environment)) {
 
                 on<Trigger<FieldDescription>>("FieldDescription Update", [this](const FieldDescription& desc) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                        field_description_ = std::make_shared<FieldDescription>(desc);
                 });
 
                 on<Trigger<Configuration<MockRobotConfig>>>("MockRobotConfig Update", [this](const Configuration<MockRobotConfig>& config) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     UpdateConfiguration(config);
                 });
 
                 // Update robot position
                 on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Robot motion", [this](const time_t&) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_robot_movement) {
                         //robot_velocity_ = { 0, 0 };
                         return;
@@ -193,7 +193,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                 // Simulate robot walking
                 on<Trigger<Every<10, std::chrono::milliseconds>>, With<Optional<messages::motion::WalkCommand>>, Options<Sync<MockRobot>>>("Mock Robot walking", [this](const time_t&, const std::shared_ptr<const messages::motion::WalkCommand>& walk) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_robot_walking) {
                         return;
                     }
@@ -202,12 +202,13 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     // Update position
                     if (walk != NULL) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         std::cerr << __LINE__ << std::endl;
-                        robot_position_[0] += (walk->velocity[0]*cos(robot_heading_) - walk->velocity[1]*sin(robot_heading_)) * 0.015;
+                        robot_position_[0] += (walk->velocity[0]*cos(robot_heading_) - walk->velocity[1]*sin(robot_heading_)) * 15;
                         std::cerr << __LINE__ << std::endl;
-                        robot_position_[1] += (walk->velocity[0]*sin(robot_heading_) + walk->velocity[1]*cos(robot_heading_)) * 0.015;
+                        robot_position_[1] += (walk->velocity[0]*sin(robot_heading_) + walk->velocity[1]*cos(robot_heading_)) * 15;
                         std::cerr << __LINE__ << std::endl;
-                        robot_heading_ += (walk->rotationalSpeed) * 0.1;
+                        robot_heading_ += (walk->rotationalSpeed) * 10;
                         std::cerr << __LINE__ << std::endl;
                     }
 
@@ -217,7 +218,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                 // Simulate game controller
                 on<Trigger<Every<100, std::chrono::milliseconds>>>("Mock Game Controller", [this](const time_t&) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_game_controller) {
                         return;
                     }
@@ -309,7 +310,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                 // Update ball position
                 on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Ball Motion", [this](const time_t&) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_ball_movement) {
                         ball_velocity_ = { 0, 0 };
                         return;
@@ -319,10 +320,10 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         ball_position_[0] += ball_velocity_[0] / 100;
                         ball_position_[1] += ball_velocity_[1] / 100;
 
-                        if((ball_velocity_[0] += (cfg_.ball_velocity_decay / 100)) < 0) {
+                        if((ball_velocity_[0] -= (cfg_.ball_velocity_decay / 100)) < 0) {
                             ball_velocity_[0] = 0;
                         }
-                        if((ball_velocity_[1] += (cfg_.ball_velocity_decay / 100)) < 0) {
+                        if((ball_velocity_[1] -= (cfg_.ball_velocity_decay / 100)) < 0) {
                             ball_velocity_[1] = 0;
                         }
 
@@ -481,7 +482,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                 // Emit robot to NUbugger
                 on<Trigger<Every<100, std::chrono::milliseconds>>, With<Mock<std::vector<messages::localisation::Self>>>, Options<Sync<MockRobot>>>("NUbugger Output", [this](const time_t&, const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     auto& robots = mock_robots.data;
 
                     emit(graph("Actual robot position", robot_position_[0], robot_position_[1]));
@@ -513,13 +514,14 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     self_marker.sr_yy = 0.01;
                     robots_msg->push_back(self_marker);
 
+//std::cerr << "emit(std::move(std::vector<messages::localisation::Self>));" << std::endl;
                     emit(std::move(robots_msg));
                 });
 
                 // Emit ball to Nubugger
                 on<Trigger<Every<100, std::chrono::milliseconds>>, With<Mock<messages::localisation::Ball>>, With<Mock<std::vector<messages::localisation::Self>>>, Options<Sync<MockRobot>>>(
                                 "NUbugger Output", [this](const time_t&, const Mock<messages::localisation::Ball>& mock_ball, const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     auto& ball = mock_ball.data;
                     auto& robots = mock_robots.data;
 
@@ -571,7 +573,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         robot_ball.world_space = true;
                         balls_msg->push_back(robot_ball);
 
-                        std::cerr << "emit(std::move(std::vector<messages::localisation::Ball>));" << std::endl;
+//                        std::cerr << "emit(std::move(std::vector<messages::localisation::Ball>));" << std::endl;
                         emit(std::move(balls_msg));
                     }
 
@@ -585,7 +587,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         balls_msg->sr_yy = 0.01;
                         balls_msg->world_space = true;
 
-                        std::cerr << "emit(std::move(messages::localisation::Ball));" << std::endl;
+//std::cerr << "emit(std::move(messages::localisation::Ball));" << std::endl;
                         emit(std::move(balls_msg));
                     }
                 });

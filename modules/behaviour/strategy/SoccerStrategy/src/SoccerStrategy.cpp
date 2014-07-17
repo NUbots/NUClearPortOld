@@ -279,10 +279,10 @@ namespace modules {
 							const std::vector<messages::localisation::Self>& selfs,
 							const std::shared_ptr<const messages::input::gameevents::GameState>& gameState
 							) {
-std::cerr << "Strategy" << std::endl;
+
 					// Update game state from game controller
 					updateGameState(gameState);
-					
+
 					// Make a copy of the previous state.
 					memcpy(&previousState, &currentState, sizeof(State));
 
@@ -297,6 +297,9 @@ std::cerr << "Strategy" << std::endl;
 					else {
 						std::cerr << "SoccerStrategy - No Self!!!!" << std::endl;
 					}
+
+std::cerr << "currentState.position[0]: " << currentState.position[0] << std::endl;
+std::cerr << "currentState.position[1]: " << currentState.position[1] << std::endl;
 
 					// Calculate the position of the ball in field coordinates.
 					arma::vec2 globalBallPosition = utility::localisation::transform::RobotToWorldTransform(currentState.position, currentState.heading, currentState.ball.position);

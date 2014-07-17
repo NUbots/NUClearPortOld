@@ -73,7 +73,7 @@ namespace modules {
                     double robot_movement_path_period = 100;
                     bool simulate_ball_movement = true;
                     bool simulate_ball_velocity_decay = true;
-                    double ball_velocity_decay = -1.5;
+                    double ball_velocity_decay = 1.5;
                     double initial_kick_velocity = 4;
                     bool emit_robot_fieldobjects = true;
                     bool emit_ball_fieldobjects = true;

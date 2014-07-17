@@ -141,12 +141,12 @@ namespace localisation {
            Options<Sync<MMKFRobotLocalisation>>
           >("MMKFRobotLocalisation Step",
             [this](const std::vector<messages::vision::Goal>& goals) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
             // Ignore empty vectors of goals.
             if (goals.size() == 0)
                 return;
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
             // // std::cout << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
             // for (auto& goal : goals) {
             //     // std::cout << __FILE__ << ", " << __LINE__ << ":" << std::endl;
@@ -167,13 +167,13 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
             //     }
             // }
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
             auto curr_time = NUClear::clock::now();
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
             engine_->TimeUpdate(curr_time);
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
             engine_->ProcessObjects(goals);
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
         });
     }
 }
