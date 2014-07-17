@@ -1,0 +1,52 @@
+SimulateVision: true
+SimulateGoalObservations: true
+SimulateBallObservations: true
+SimulateOdometry: false
+SimulateRobotMovement: false
+SimulateRobotWalking: true
+SimulateGameController: true
+RobotMovementPathPeriod: 100
+SimulateBallMovement: true
+EmitRobotFieldobjects: true
+EmitBallFieldobjects: true
+RobotImuDriftPeriod: 300
+ObserveLeftGoal: yes
+ObserveRightGoal: yes
+DistinguishLeftAndRightGoals: yes
+EmitLocalisationBallVector: yes
+
+# Game Controller
+GCFirstHalf: true
+GCKickedOutByUs: true
+GCOurKickOff: true
+GCTeamID: 14
+GCOpponentID: 0
+
+# Mode
+# 0 - Normal
+# 1 - Penalty Shootout
+# 2 - Overtime
+GCMode: 0
+
+# Phase
+# 0 - Initial
+# 1 - Ready
+# 2 - Set
+# 3 - Playing
+# 4 - Timeout
+# 5 - Finished
+GCPhase: 0
+
+# Penalty
+# 0 - Unpenalised
+# 1 - Ball Manipulation
+# 2 - Physical Contact
+# 3 - Illegal Attack
+# 4 - Illegal Defense
+# 5 - Request for pickup
+# 6 - Request for service
+# 7 - Request for pickup to service
+# 8 - Substitute
+# 9 - Manual
+GCPenaltyReason: 0
+
