@@ -72,6 +72,9 @@ namespace modules {
                     bool simulate_game_controller = false;
                     double robot_movement_path_period = 100;
                     bool simulate_ball_movement = true;
+                    bool simulate_ball_velocity_decay = true;
+                    double ball_velocity_decay = -1.5;
+                    double initial_kick_velocity = 4;
                     bool emit_robot_fieldobjects = true;
                     bool emit_ball_fieldobjects = true;
                     double robot_imu_drift_period = 200;

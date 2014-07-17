@@ -29,6 +29,7 @@
 #include "messages/localisation/FieldObject.h"
 #include "utility/localisation/transform.h"
 #include "messages/motion/WalkCommand.h"
+#include "messages/motion/KickCommand.h"
 #include "messages/input/Sensors.h"
 #include "messages/input/ServoID.h"
 #include "messages/input/gameevents/GameEvents.h"
@@ -59,6 +60,9 @@ namespace modules {
             using messages::input::gameevents::PenaltyReason;
             using messages::behaviour::LookAtAngle;
             using messages::behaviour::LookAtPosition;
+            using messages::motion::KickCommand;
+            using messages::motion::KickFinished;
+            using messages::behaviour::LimbID;
 
             double triangle_wave(double t, double period) {
                 auto a = period; // / 2.0;
@@ -86,6 +90,17 @@ namespace modules {
                 return t;
             }
 
+            // Copied from KickScript.cpp
+            int getDirectionalQuadrant(float x, float y) {
+
+                    // These represent 4 directions of looking, see https://www.desmos.com/calculator/mm8cnsnpdt for a graph of the 4 quadrants
+                    // Note that x is forward in relation to the robot so the forward quadrant is x >= |y|
+                    return x >=  std::abs(y) ? 0  // forward
+                         : y >=  std::abs(x) ? 1  // left
+                         : x <= -std::abs(y) ? 2  // backward
+                         :                     3; // right
+            }
+
             void MockRobot::UpdateConfiguration(const messages::support::Configuration<MockRobotConfig>& config) {
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 cfg_.simulate_vision = config["SimulateVision"].as<bool>();
@@ -97,6 +112,9 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 cfg_.simulate_game_controller = config["SimulateRobotWalking"].as<bool>();
                 cfg_.robot_movement_path_period = config["RobotMovementPathPeriod"].as<double>();
                 cfg_.simulate_ball_movement = config["SimulateBallMovement"].as<bool>();
+                cfg_.simulate_ball_velocity_decay = config["SimulateBallVelocityDecay"].as<bool>();
+                cfg_.ball_velocity_decay = config["BallVelocityDecay"].as<double>();
+                cfg_.initial_kick_velocity = config["InitialKickVelocity"].as<double>();
                 cfg_.emit_robot_fieldobjects = config["EmitRobotFieldobjects"].as<bool>();
                 cfg_.emit_ball_fieldobjects = config["EmitBallFieldobjects"].as<bool>();
                 cfg_.robot_imu_drift_period = config["RobotImuDriftPeriod"].as<double>();
@@ -297,18 +315,31 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         return;
                     }
 
-                    auto t = absolute_time();
-                    double period = 40;
-                    double x_amp = 3;
-                    double y_amp = 2;
+                    if(cfg_.simulate_ball_velocity_decay) {
+                        ball_position_[0] += ball_velocity_[0] / 100;
+                        ball_position_[1] += ball_velocity_[1] / 100;
 
-                    auto triangle1 = triangle_wave(t, period);
-                    auto triangle2 = triangle_wave(t + (period / 4.0), period);
-                    ball_position_ = { triangle1 * x_amp, triangle2 * y_amp };
+                        if((ball_velocity_[0] += (cfg_.ball_velocity_decay / 100)) < 0) {
+                            ball_velocity_[0] = 0;
+                        }
+                        if((ball_velocity_[1] += (cfg_.ball_velocity_decay / 100)) < 0) {
+                            ball_velocity_[1] = 0;
+                        }
 
-                    auto velocity_x = -square_wave(t, period) * ((x_amp * 4) / period);
-                    auto velocity_y = -square_wave(t + (period / 4.0), period) * ((y_amp * 4) / period);
-                    ball_velocity_ = { velocity_x, velocity_y };
+                    } else {
+                        auto t = absolute_time();
+                        double period = 40;
+                        double x_amp = 3;
+                        double y_amp = 2;
+
+                        auto triangle1 = triangle_wave(t, period);
+                        auto triangle2 = triangle_wave(t + (period / 4.0), period);
+                        ball_position_ = { triangle1 * x_amp, triangle2 * y_amp };
+
+                        auto velocity_x = -square_wave(t, period) * ((x_amp * 4) / period);
+                        auto velocity_y = -square_wave(t + (period / 4.0), period) * ((y_amp * 4) / period);
+                        ball_velocity_ = { velocity_x, velocity_y };
+                    }
                 });
 
                 // // Simulate Odometry
@@ -339,18 +370,15 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                 // Simulate Vision
                 on<Trigger<Every<30, Per<std::chrono::seconds>>>, Options<Sync<MockRobot>>>("Mock Vision Simulation", [this](const time_t&) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_vision) {
                         return;
                     }
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (field_description_ == nullptr) {
                         NUClear::log(__FILE__, __LINE__, ": field_description_ == nullptr");
                         return;
                     }
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Sensors:
                     auto sensors = std::make_shared<messages::input::Sensors>();
 
@@ -361,14 +389,12 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     orientation.submat(0, 1, 1, 1) = arma::vec2({ -robot_imu_dir_(1), robot_imu_dir_(0) });
                     sensors->orientation = orientation;
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // orientationCamToGround
                     sensors->orientationCamToGround = arma::eye(4, 4);
 
                     // forwardKinematics
                     sensors->forwardKinematics[ServoID::HEAD_PITCH] = arma::eye(4, 4);
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Goal observation
                     if (cfg_.simulate_goal_observations) {
                         auto goals = std::make_unique<std::vector<messages::vision::Goal>>();
@@ -388,7 +414,6 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             goal_r_pos.rows(0, 1) = field_description_->goalpost_yr;
                         }
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         if (cfg_.observe_left_goal) {
                             messages::vision::Goal goal1;
                             messages::vision::VisionObject::Measurement g1_m;
@@ -409,7 +434,6 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             goals->push_back(goal1);
                         }
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         if (cfg_.observe_right_goal) {
                             messages::vision::Goal goal2;
                             messages::vision::VisionObject::Measurement g2_m;
@@ -430,10 +454,8 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             goals->push_back(goal2);
                         }
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         if (goals->size() > 0) {
                             emit(std::move(goals));
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         }
                     }
 
@@ -451,10 +473,8 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         ball.sensors = sensors;
                         ball_vec->push_back(ball);
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         emit(std::move(ball_vec));
                     }
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     emit(std::make_unique<Sensors>(*sensors));
                 });
@@ -696,6 +716,39 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             speed = cfg_.fast_speed;
                         }
                     }
+                });
+                    
+                // Give the ball velocity when it is kicked
+                on<Trigger<KickCommand>>([this] (const KickCommand& kickCommand) {
+                    auto direction = kickCommand.direction;
+                    auto leg = kickCommand.leg;
+
+                    int quadrant = getDirectionalQuadrant(direction[0], direction[1]);
+
+                    // check if the command was valid
+                    bool valid = true;
+                    if (leg == LimbID::RIGHT_LEG) {
+                        if (quadrant == 2 || quadrant == 3) {
+                            NUClear::log<NUClear::WARN>("Right leg cannot kick towards: ", direction);
+                            valid = false;
+                        }
+                    } else if (leg == LimbID::LEFT_LEG) {
+                        if (quadrant == 2 || quadrant == 1) {
+                            NUClear::log<NUClear::WARN>("Left leg cannot kick towards: ", direction);
+                            valid = false;
+                        }
+                    } else {
+                        NUClear::log<NUClear::WARN>("Cannot kick with limb: ", uint(leg));
+                        valid = false;
+                    }
+
+                    if (valid) {
+                        arma::vec2 kick_direction = arma::normalise(RobotToWorldTransform(robot_position_, robot_heading_, direction));
+
+                        ball_velocity_ = {cfg_.initial_kick_velocity * kick_direction[0], cfg_.initial_kick_velocity * kick_direction[1]};
+                    }
+
+                    emit(std::move(std::make_unique<KickFinished>()));
                 });
             }
         }
