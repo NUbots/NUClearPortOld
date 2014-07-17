@@ -50,3 +50,12 @@ GCPhase: 0
 # 9 - Manual
 GCPenaltyReason: 0
 
+# Look strategies.
+FastSpeed : 1.2
+SlowSpeed : 0.6
+minYaw : -1.5
+maxYaw : 1.5
+minPitch : -1.2
+maxPitch : 1.2
+screenPadding : 0.15
+distanceThreshold : 0.15

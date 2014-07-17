@@ -50,6 +50,16 @@ namespace modules {
                 // arma::vec odom_old_robot_heading_ = { 1, 0 };
                 double odom_old_robot_heading_ = 0;
 
+                typedef struct {
+                    double speed;
+                    double yaw;
+                    double pitch;
+                } HeadPan;
+
+                double headYaw;
+                double headPitch;
+                std::vector<HeadPan> headPans;
+
                 std::shared_ptr<messages::support::FieldDescription> field_description_;
 
                 struct {
@@ -79,6 +89,16 @@ namespace modules {
                     int gc_penalty_reason;
                     int gc_team_id;
                     int gc_opponent_id;
+
+                    // Look strategies.
+                    double fast_speed;
+                    double slow_speed;
+                    double min_yaw;
+                    double max_yaw;
+                    double min_pitch;
+                    double max_pitch;
+                    double screen_padding;
+                    double distance_threshold;
                 } cfg_;
 
             public:

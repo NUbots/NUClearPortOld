@@ -32,6 +32,7 @@
 #include "messages/input/Sensors.h"
 #include "messages/input/ServoID.h"
 #include "messages/input/gameevents/GameEvents.h"
+#include "messages/behaviour/LookStrategy.h"
 
 namespace modules {
     namespace behaviour {
@@ -56,6 +57,8 @@ namespace modules {
             using messages::input::gameevents::Phase;
             using messages::input::gameevents::Mode;
             using messages::input::gameevents::PenaltyReason;
+            using messages::behaviour::LookAtAngle;
+            using messages::behaviour::LookAtPosition;
 
             double triangle_wave(double t, double period) {
                 auto a = period; // / 2.0;
@@ -111,6 +114,19 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 cfg_.gc_penalty_reason = config["GCPenaltyReason"].as<int>();
                 cfg_.gc_team_id = config["GCTeamID"].as<int>();
                 cfg_.gc_opponent_id = config["GCOpponentID"].as<int>();
+                
+                // Look strategies.
+                // Pan speeds.
+                cfg_.fast_speed = config["FastSpeed"].as<double>();
+                cfg_.slow_speed = config["SlowSpeed"].as<double>();
+
+                // Head limits.
+                cfg_.min_yaw = config["minYaw"].as<double>();
+                cfg_.max_yaw = config["maxYaw"].as<double>();
+                cfg_.min_pitch = config["minPitch"].as<double>();
+                cfg_.max_pitch = config["maxPitch"].as<double>();
+                cfg_.screen_padding = config["screenPadding"].as<double>();
+                cfg_.distance_threshold = config["distanceThreshold"].as<double>();
             }
 
             MockRobot::MockRobot(std::unique_ptr<NUClear::Environment> environment)
@@ -359,8 +375,8 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                         // Only observe goals that are in front of the robot
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                        arma::vec3 goal_l_pos = {0, 0, 0};
-                        arma::vec3 goal_r_pos = {0, 0, 0};
+                        arma::vec3 goal_l_pos;
+                        arma::vec3 goal_r_pos;
 
                         if (robot_heading_ < -M_PI * 0.5 || robot_heading_ > M_PI * 0.5) {
                             goal_l_pos.rows(0, 1) = field_description_->goalpost_bl;
@@ -380,7 +396,6 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             g1_m.error = arma::eye(3, 3) * 0.1;
                             goal1.measurements.push_back(g1_m);
                             goal1.measurements.push_back(g1_m);
-                            goal1.side = messages::vision::Goal::Side::RIGHT;
 
                             if (cfg_.distinguish_left_and_right_goals) {
                                 goal1.side = messages::vision::Goal::Side::RIGHT;
@@ -552,6 +567,134 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                         std::cerr << "emit(std::move(messages::localisation::Ball));" << std::endl;
                         emit(std::move(balls_msg));
+                    }
+                });
+
+                // Simulate head motion.
+                on<Trigger<Every<1, std::chrono::milliseconds>>>("Mock Head Motion Simulator", [this](const time_t&) {
+                        // s = s_0 + vt + a*t*t*0.5
+                        // s_0 = current position
+                        // t = time increment (1 ms from the trigger)
+                        // v = pan speed
+                        // a = 0 (head is moving with a constant velocity)
+                        static size_t currentIndex = 0;
+
+                        if ((headPans.size() > 0) && (currentIndex < headPans.size())) {
+                            // Stop moving once we reach our target.
+                            if (headYaw != headPans.at(currentIndex).yaw) {
+                                headYaw = headYaw + (headPans.at(currentIndex).speed * 0.001);
+
+                                // Cap movement at target position.
+                                if (headYaw > headPans.at(currentIndex).yaw) {
+                                    headYaw = headPans.at(currentIndex).yaw;
+                                }
+                            }
+
+                            if (headPitch != headPans.at(currentIndex).pitch) {
+                                headPitch = headPitch + (headPans.at(currentIndex).speed * 0.001);
+
+                                if (headPitch > headPans.at(currentIndex).pitch) {
+                                    headPitch = headPans.at(currentIndex).pitch;
+                                }
+                            }
+
+                            if ((headPitch == headPans.at(currentIndex).pitch) && (headYaw == headPans.at(currentIndex).yaw)) {
+                                currentIndex++;
+
+                                if (currentIndex == headPans.size()) {
+                                    currentIndex = 0;
+                                    headPans.clear();
+                                }
+                            }
+                        }
+                });
+
+                on<Trigger<LookAtAngle>>("LookAtAngle catcher", [this](const LookAtAngle& angle) {
+                    if (headPans.empty()) {
+                        // Select the pan speed to use.
+                        double speed = (sqrt((angle.pitch * angle.pitch) + (angle.yaw * angle.yaw)) < cfg_.distance_threshold) ? cfg_.slow_speed : cfg_.fast_speed;
+
+                        // Calculate the target yaw and pitch.
+                        double yaw = std::fmin(std::fmax(angle.yaw + headYaw, cfg_.min_yaw), cfg_.max_yaw);
+                        double pitch = std::fmin(std::fmax(angle.pitch + headPitch, cfg_.min_pitch), cfg_.max_pitch);
+
+                        headPans.emplace_back(HeadPan {speed, yaw, pitch});
+                    }
+                });
+
+                on<Trigger<std::vector<LookAtAngle>>>("LookAtAngles catcher", [this](const std::vector<LookAtAngle>& angles) {
+                    if (headPans.empty()) {
+                        double pitchLow = 0.0, pitchHigh = 0.0, yawLeft = 0.0, yawRight = 0.0;
+                        double offset = cfg_.screen_padding;
+
+                        // Loop through and get the yaw/pitch bounds.
+                        for (const auto& angle : angles) {
+                            pitchLow = fmin(pitchLow, angle.pitch - offset);
+                            pitchHigh = fmax(pitchHigh, angle.pitch + offset);
+
+                            yawLeft = fmin(yawLeft, angle.yaw - offset);
+                            yawRight = fmax(yawRight, angle.yaw + offset);
+
+                            offset = 0.0;
+                        }
+
+                        double avgYaw = (yawLeft + yawRight) / 2.0;
+                        double avgPitch = (pitchLow + pitchHigh) / 2.0;
+
+                        // Select the pan speed to use.
+                        double speed = (sqrt((avgYaw * avgYaw) + (avgPitch * avgPitch)) < cfg_.distance_threshold) ? cfg_.slow_speed : cfg_.fast_speed;
+
+                        // Calculate the target yaw and pitch.
+                        double yaw = std::fmin(std::fmax(avgYaw + headYaw, cfg_.min_yaw), cfg_.max_yaw);
+                        double pitch = std::fmin(std::fmax(avgPitch + headPitch, cfg_.min_pitch), cfg_.max_pitch);
+
+                        headPans.emplace_back(HeadPan {speed, yaw, pitch});
+                    }
+                });
+
+                on<Trigger<LookAtPosition>>("LookAtPosition catcher", [this](const LookAtPosition& position) {
+                    if (headPans.empty()) {
+                        // Select the pan speed to use.
+                        double speed = (sqrt((position.pitch * position.pitch) + (position.yaw * position.yaw)) < cfg_.distance_threshold) ? cfg_.slow_speed : cfg_.fast_speed;
+
+                        // Calculate the target yaw and pitch.
+                        double yaw = std::fmin(std::fmax(position.yaw + headYaw, cfg_.min_yaw), cfg_.max_yaw);
+                        double pitch = std::fmin(std::fmax(position.pitch + headPitch, cfg_.min_pitch), cfg_.max_pitch);
+
+                        headPans.emplace_back(HeadPan {speed, yaw, pitch});
+                    }
+                });
+
+                on<Trigger<std::vector<LookAtPosition>>>("LookAtPositions catcher", [this](const std::vector<LookAtPosition>& positions) {
+                    if (headPans.empty()) {
+                        double currentYaw = headYaw;
+                        double currentPitch = headPitch;
+                        std::vector<LookAtPosition> nonConstPositions;
+
+                        // Make a sortable vector.
+                        for (auto& position : positions) {
+                            nonConstPositions.emplace_back(position);
+                        }
+
+                        // Sort the positions into order of closest to current yaw/pitch.
+                        std::stable_sort(nonConstPositions.begin(), nonConstPositions.end(), [&currentYaw, &currentPitch] (const LookAtPosition& a, const LookAtPosition& b) {
+                            const double diffx_a = currentYaw - a.yaw;
+                            const double diffx_b = currentYaw - b.yaw;
+                            const double diffy_a = currentPitch - a.pitch;
+                            const double diffy_b = currentPitch - b.pitch;
+                            const double dist_a = (diffx_a * diffx_a) + (diffy_a * diffy_a);
+                            const double dist_b = (diffx_b * diffx_b) + (diffy_b * diffy_b);
+
+                            return (dist_a < dist_b);
+                        });
+
+                        // Do the pan.
+                        double speed = cfg_.slow_speed;
+
+                        for (auto& position : nonConstPositions) {
+                            headPans.emplace_back(HeadPan {speed, position.yaw, position.pitch});
+                            speed = cfg_.fast_speed;
+                        }
                     }
                 });
             }
