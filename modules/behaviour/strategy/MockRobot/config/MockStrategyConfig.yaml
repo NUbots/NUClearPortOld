@@ -2,8 +2,8 @@ SimulateVision: true
 SimulateGoalObservations: true
 SimulateBallObservations: true
 SimulateOdometry: false
-SimulateRobotMovement: false
-SimulateRobotWalking: true
+SimulateRobotMovement: true
+SimulateRobotWalking: false
 SimulateGameController: true
 RobotMovementPathPeriod: 100
 SimulateBallMovement: true

@@ -83,8 +83,8 @@ namespace modules {
                 return t;
             }
 
-            void MockRobot::UpdateConfiguration(
-                const messages::support::Configuration<MockRobotConfig>& config) {
+            void MockRobot::UpdateConfiguration(const messages::support::Configuration<MockRobotConfig>& config) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 cfg_.simulate_vision = config["SimulateVision"].as<bool>();
                 cfg_.simulate_goal_observations = config["SimulateGoalObservations"].as<bool>();
                 cfg_.simulate_ball_observations = config["SimulateBallObservations"].as<bool>();
@@ -116,20 +116,19 @@ namespace modules {
             MockRobot::MockRobot(std::unique_ptr<NUClear::Environment> environment)
                 : Reactor(std::move(environment)) {
 
-                on<Trigger<Startup>,
-                    With<FieldDescription>>("FieldDescription Update",
-                    [this](const Startup&, const FieldDescription& desc) {
+                on<Trigger<FieldDescription>>("FieldDescription Update", [this](const FieldDescription& desc) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                        field_description_ = std::make_shared<FieldDescription>(desc);
                 });
 
-                on<Trigger<Configuration<MockRobotConfig>>>(
-                    "MockRobotConfig Update",
-                    [this](const Configuration<MockRobotConfig>& config) {
+                on<Trigger<Configuration<MockRobotConfig>>>("MockRobotConfig Update", [this](const Configuration<MockRobotConfig>& config) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     UpdateConfiguration(config);
                 });
 
                 // Update robot position
                 on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Robot motion", [this](const time_t&) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_robot_movement) {
                         //robot_velocity_ = { 0, 0 };
                         return;
@@ -159,12 +158,8 @@ namespace modules {
                 });
 
                 // Simulate robot walking
-                on<Trigger<Every<10, std::chrono::milliseconds>>,
-                    With<Optional<messages::motion::WalkCommand>>,
-                    Options<Sync<MockRobot>>>("Mock Robot walking",
-                    [this](const time_t&,
-                           const std::shared_ptr<const messages::motion::WalkCommand>& walk) {
-
+                on<Trigger<Every<10, std::chrono::milliseconds>>, With<Optional<messages::motion::WalkCommand>>, Options<Sync<MockRobot>>>("Mock Robot walking", [this](const time_t&, const std::shared_ptr<const messages::motion::WalkCommand>& walk) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_robot_walking) {
                         return;
                     }
@@ -184,12 +179,11 @@ namespace modules {
 
                     double imu_period = cfg_.robot_imu_drift_period;
                     world_imu_direction = { std::cos(2 * M_PI * t / imu_period), std::sin(2 * M_PI * t / imu_period) };
-
                 });
 
                 // Simulate game controller
                 on<Trigger<Every<100, std::chrono::milliseconds>>>("Mock Game Controller", [this](const time_t&) {
-
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_game_controller) {
                         return;
                     }
@@ -240,11 +234,7 @@ namespace modules {
 
                     // Players
                     gameState->team.players.clear();
-                    gameState->team.players.push_back({
-                        0,
-                        PenaltyReason::UNPENALISED,
-                        NUClear::clock::now()
-                    });
+                    gameState->team.players.push_back({0, PenaltyReason::UNPENALISED, NUClear::clock::now()});
 
                     switch(cfg_.gc_penalty_reason) {
                         case 1:
@@ -281,12 +271,11 @@ namespace modules {
                     }
 
                     emit(std::move(gameState));
-
                 });
 
                 // Update ball position
-                on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Ball Motion", [this](const time_t&){
-
+                on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Ball Motion", [this](const time_t&) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_ball_movement) {
                         ball_velocity_ = { 0, 0 };
                         return;
@@ -309,6 +298,7 @@ namespace modules {
                 // // Simulate Odometry
                 // on<Trigger<Every<100, std::chrono::milliseconds>>>("Mock Odometry Simulation", [this](const time_t&) {
                 //     if (!cfg_.simulate_odometry) {
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 //         return;
                 //     }
 
@@ -332,17 +322,19 @@ namespace modules {
                 // });
 
                 // Simulate Vision
-                on<Trigger<Every<30, Per<std::chrono::seconds>>>,
-                   Options<Sync<MockRobot>>>("Mock Vision Simulation", [this](const time_t&) {
+                on<Trigger<Every<30, Per<std::chrono::seconds>>>, Options<Sync<MockRobot>>>("Mock Vision Simulation", [this](const time_t&) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_vision) {
                         return;
                     }
 
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (field_description_ == nullptr) {
                         NUClear::log(__FILE__, __LINE__, ": field_description_ == nullptr");
                         return;
                     }
 
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Sensors:
                     auto sensors = std::make_shared<messages::input::Sensors>();
 
@@ -353,17 +345,20 @@ namespace modules {
                     orientation.submat(0, 1, 1, 1) = arma::vec2({ -robot_imu_dir_(1), robot_imu_dir_(0) });
                     sensors->orientation = orientation;
 
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // orientationCamToGround
                     sensors->orientationCamToGround = arma::eye(4, 4);
 
                     // forwardKinematics
                     sensors->forwardKinematics[ServoID::HEAD_PITCH] = arma::eye(4, 4);
 
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Goal observation
                     if (cfg_.simulate_goal_observations) {
                         auto goals = std::make_unique<std::vector<messages::vision::Goal>>();
 
                         // Only observe goals that are in front of the robot
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         arma::vec3 goal_l_pos = {0, 0, 0};
                         arma::vec3 goal_r_pos = {0, 0, 0};
 
@@ -377,6 +372,7 @@ namespace modules {
                             goal_r_pos.rows(0, 1) = field_description_->goalpost_yr;
                         }
 
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         if (cfg_.observe_left_goal) {
                             messages::vision::Goal goal1;
                             messages::vision::VisionObject::Measurement g1_m;
@@ -385,15 +381,20 @@ namespace modules {
                             goal1.measurements.push_back(g1_m);
                             goal1.measurements.push_back(g1_m);
                             goal1.side = messages::vision::Goal::Side::RIGHT;
+
                             if (cfg_.distinguish_left_and_right_goals) {
                                 goal1.side = messages::vision::Goal::Side::RIGHT;
-                            } else {
+                            }
+                            
+                            else {
                                 goal1.side = messages::vision::Goal::Side::UNKNOWN;
                             }
+
                             goal1.sensors = sensors;
                             goals->push_back(goal1);
                         }
 
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         if (cfg_.observe_right_goal) {
                             messages::vision::Goal goal2;
                             messages::vision::VisionObject::Measurement g2_m;
@@ -401,17 +402,24 @@ namespace modules {
                             g2_m.error = arma::eye(3, 3) * 0.1;
                             goal2.measurements.push_back(g2_m);
                             goal2.measurements.push_back(g2_m);
+
                             if (cfg_.distinguish_left_and_right_goals) {
                                 goal2.side = messages::vision::Goal::Side::LEFT;
-                            } else {
+                            }
+                            
+                            else {
                                 goal2.side = messages::vision::Goal::Side::UNKNOWN;
                             }
+
                             goal2.sensors = sensors;
                             goals->push_back(goal2);
                         }
 
-                        if (goals->size() > 0)
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+                        if (goals->size() > 0) {
                             emit(std::move(goals));
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+                        }
                     }
 
                     // Ball observation
@@ -428,19 +436,17 @@ namespace modules {
                         ball.sensors = sensors;
                         ball_vec->push_back(ball);
 
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         emit(std::move(ball_vec));
                     }
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     emit(std::make_unique<Sensors>(*sensors));
                 });
 
                 // Emit robot to NUbugger
-                on<Trigger<Every<100, std::chrono::milliseconds>>,
-                   With<std::vector<messages::localisation::Self>>,
-                   Options<Sync<MockRobot>>>("NUbugger Output",
-                    [this](const time_t&,
-                           const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
-
+                on<Trigger<Every<100, std::chrono::milliseconds>>, With<Mock<std::vector<messages::localisation::Self>>>, Options<Sync<MockRobot>>>("NUbugger Output", [this](const time_t&, const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     auto& robots = mock_robots.data;
 
                     emit(graph("Actual robot position", robot_position_[0], robot_position_[1]));
@@ -476,13 +482,9 @@ namespace modules {
                 });
 
                 // Emit ball to Nubugger
-                on<Trigger<Every<100, std::chrono::milliseconds>>,
-                   With<messages::localisation::Ball>,
-                   With<std::vector<messages::localisation::Self>>,
-                   Options<Sync<MockRobot>>>("NUbugger Output",
-                    [this](const time_t&,
-                           const Mock<messages::localisation::Ball>& mock_ball,
-                           const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
+                on<Trigger<Every<100, std::chrono::milliseconds>>, With<Mock<messages::localisation::Ball>>, With<Mock<std::vector<messages::localisation::Self>>>, Options<Sync<MockRobot>>>(
+                                "NUbugger Output", [this](const time_t&, const Mock<messages::localisation::Ball>& mock_ball, const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     auto& ball = mock_ball.data;
                     auto& robots = mock_robots.data;
 

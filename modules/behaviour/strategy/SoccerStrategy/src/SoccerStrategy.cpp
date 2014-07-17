@@ -279,7 +279,7 @@ namespace modules {
 							const std::vector<messages::localisation::Self>& selfs,
 							const std::shared_ptr<const messages::input::gameevents::GameState>& gameState
 							) {
-
+std::cerr << "Strategy" << std::endl;
 					// Update game state from game controller
 					updateGameState(gameState);
 					
@@ -422,12 +422,12 @@ namespace modules {
 					// ------
 					// Take appropriate action depending on state
 					// ------
-					switch(gameState->phase){
-						case Phase::INITIAL:
+					switch(currentState.primaryGameState) {
+						case GameStatePrimary::INITIAL:
 							stopWalking();
 							findSelf();
 							break;
-						case Phase::READY:
+						case GameStatePrimary::READY:
 							if(currentState.penalised || currentState.pickedUp){
 								stopWalking();
 							} else{
@@ -435,11 +435,11 @@ namespace modules {
 							}
 							findSelf();
 							break;
-						case Phase::SET:
+						case GameStatePrimary::SET:
 							stopWalking();
 							findSelfAndBall();
 							break;
-						case Phase::PLAYING:
+						case GameStatePrimary::PLAYING:
 							if(currentState.penalised || currentState.pickedUp){
 								stopWalking();
 								findSelfAndBall();
@@ -465,11 +465,11 @@ namespace modules {
 								}
 							}
 							break;
-						case Phase::TIMEOUT:
+						case GameStatePrimary::TIMEOUT:
 							stopWalking();
 							findSelfAndBall();
 							break;
-						case Phase::FINISHED:
+						case GameStatePrimary::FINISHED:
 							stopWalking();
 							findSelfAndBall();
 							break;

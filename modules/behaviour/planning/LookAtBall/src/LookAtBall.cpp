@@ -76,7 +76,7 @@ namespace modules {
 					const std::shared_ptr<const messages::localisation::Ball>& ball) {
             
             const bool ballIsLost = utility::time::TimeDifferenceSeconds(NUClear::clock::now(),timeLastSeen) > BALL_SEARCH_TIMEOUT_MILLISECONDS;
-            const bool ballIsUncertain = ((ball->sr_xx > BALL_UNCERNTAINTY_THRESHOLD) || (ball->sr_yy > BALL_UNCERNTAINTY_THRESHOLD));
+            const bool ballIsUncertain = (ball != NULL) ? ((ball->sr_xx > BALL_UNCERNTAINTY_THRESHOLD) || (ball->sr_yy > BALL_UNCERNTAINTY_THRESHOLD)) : true;
             
             //if balls are seen, then place those and everything else that's useful into the look at list
 			if (balls.size() > 0) {
