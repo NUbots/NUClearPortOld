@@ -33,498 +33,526 @@
 #include "messages/input/ServoID.h"
 #include "messages/input/gameevents/GameEvents.h"
 
-using messages::input::Sensors;
-using messages::input::ServoID;
-using utility::math::matrix::rotationMatrix;
-using utility::math::angle::normalizeAngle;
-using utility::math::angle::vectorToBearing;
-using utility::math::angle::bearingToUnitVector;
-using utility::math::coordinates::cartesianToSpherical;
-using utility::localisation::transform::SphericalRobotObservation;
-using utility::localisation::transform::WorldToRobotTransform;
-using utility::localisation::transform::RobotToWorldTransform;
-using utility::nubugger::graph;
-using messages::support::Configuration;
-using messages::support::FieldDescription;
-using modules::localisation::MockRobotConfig;
-using messages::localisation::Mock;
-using messages::input::gameevents::GameState;
-using messages::input::gameevents::Phase;
-using messages::input::gameevents::Mode;
-using messages::input::gameevents::PenaltyReason;
-
 namespace modules {
-namespace localisation {
+    namespace behaviour {
+        namespace strategy {
 
-    double triangle_wave(double t, double period) {
-        auto a = period; // / 2.0;
-        auto k = t / a;
-        return 2.0 * std::abs(2.0 * (k - std::floor(k + 0.5))) - 1.0;
-    }
-    double sawtooth_wave(double t, double period) {
-        return 2.0 * std::fmod(t / period, 1.0) - 1.0;
-    }
-    double square_wave(double t, double period) {
-        return std::copysign(1.0, sawtooth_wave(t, period));
-    }
-    double sine_wave(double t, double period) {
-        return std::sin((2.0 * M_PI * t) / period);
-    }
-    double absolute_time() {
-        auto now = NUClear::clock::now();
-        auto ms_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-        double ms = static_cast<double>(ms_since_epoch - 1393322147502L);
-        double t = ms / 1000.0;
-        return t;
-    }
+            using messages::input::Sensors;
+            using messages::input::ServoID;
+            using utility::math::matrix::rotationMatrix;
+            using utility::math::angle::normalizeAngle;
+            using utility::math::angle::vectorToBearing;
+            using utility::math::angle::bearingToUnitVector;
+            using utility::math::coordinates::cartesianToSpherical;
+            using utility::localisation::transform::SphericalRobotObservation;
+            using utility::localisation::transform::WorldToRobotTransform;
+            using utility::localisation::transform::RobotToWorldTransform;
+            using utility::nubugger::graph;
+            using messages::support::Configuration;
+            using messages::support::FieldDescription;
+            using modules::behaviour::strategy::MockRobotConfig;
+            using messages::localisation::Mock;
+            using messages::input::gameevents::GameState;
+            using messages::input::gameevents::Phase;
+            using messages::input::gameevents::Mode;
+            using messages::input::gameevents::PenaltyReason;
 
-    void MockRobot::UpdateConfiguration(
-        const messages::support::Configuration<MockRobotConfig>& config) {
-        cfg_.simulate_vision = config["SimulateVision"].as<bool>();
-        cfg_.simulate_goal_observations = config["SimulateGoalObservations"].as<bool>();
-        cfg_.simulate_ball_observations = config["SimulateBallObservations"].as<bool>();
-        cfg_.simulate_odometry = config["SimulateOdometry"].as<bool>();
-        cfg_.simulate_robot_movement = config["SimulateRobotMovement"].as<bool>();
-        cfg_.simulate_robot_walking = config["SimulateRobotWalking"].as<bool>();
-        cfg_.simulate_game_controller = config["SimulateRobotWalking"].as<bool>();
-        cfg_.robot_movement_path_period = config["RobotMovementPathPeriod"].as<double>();
-        cfg_.simulate_ball_movement = config["SimulateBallMovement"].as<bool>();
-        cfg_.emit_robot_fieldobjects = config["EmitRobotFieldobjects"].as<bool>();
-        cfg_.emit_ball_fieldobjects = config["EmitBallFieldobjects"].as<bool>();
-        cfg_.robot_imu_drift_period = config["RobotImuDriftPeriod"].as<double>();
-        cfg_.observe_left_goal = config["ObserveLeftGoal"].as<bool>();
-        cfg_.observe_right_goal = config["ObserveRightGoal"].as<bool>();
-        cfg_.distinguish_left_and_right_goals = config["DistinguishLeftAndRightGoals"].as<bool>();
-
-        // Game Controller
-        cfg_.gc_first_half = config["GCFirstHalf"].as<bool>();
-        cfg_.gc_kicked_out_by_us = config["GCKickedOutByUs"].as<bool>();
-        cfg_.gc_our_kick_off = config["GCOurKickOff"].as<bool>();
-        cfg_.gc_mode = config["GCMode"].as<int>();
-        cfg_.gc_phase = config["GCPhase"].as<int>();
-        cfg_.gc_penalty_reason = config["GCPenaltyReason"].as<int>();
-        cfg_.gc_team_id = config["GCTeamID"].as<int>();
-        cfg_.gc_opponent_id = config["GCOpponentID"].as<int>();
-    }
-
-    MockRobot::MockRobot(std::unique_ptr<NUClear::Environment> environment)
-        : Reactor(std::move(environment)) {
-
-        on<Trigger<Startup>,
-            With<FieldDescription>>("FieldDescription Update",
-            [this](const Startup&, const FieldDescription& desc) {
-               field_description_ = std::make_shared<FieldDescription>(desc);
-        });
-
-        on<Trigger<Configuration<MockRobotConfig>>>(
-            "MockRobotConfig Update",
-            [this](const Configuration<MockRobotConfig>& config) {
-            UpdateConfiguration(config);
-        });
-
-        // Update robot position
-        on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Robot motion", [this](const time_t&){
-            if (!cfg_.simulate_robot_movement) {
-                //robot_velocity_ = { 0, 0 };
-                return;
+            double triangle_wave(double t, double period) {
+                auto a = period; // / 2.0;
+                auto k = t / a;
+                return 2.0 * std::abs(2.0 * (k - std::floor(k + 0.5))) - 1.0;
             }
 
-            auto t = absolute_time();
-            double period = cfg_.robot_movement_path_period;
-            double x_amp = 3;
-            double y_amp = 2;
-
-            arma::vec old_pos = robot_position_;
-
-            auto wave1 = triangle_wave(t, period);
-            auto wave2 = triangle_wave(t + (period / 4.0), period);
-            // auto wave1 = sine_wave(t, period);
-            // auto wave2 = sine_wave(t + (period / 4.0), period);
-            robot_position_ = { wave1 * x_amp, wave2 * y_amp };
-
-            arma::vec diff = robot_position_ - old_pos;
-
-            robot_heading_ = vectorToBearing(diff);
-            robot_velocity_ = robot_heading_ / 100.0;
-
-
-            double imu_period = cfg_.robot_imu_drift_period;
-            world_imu_direction = { std::cos(2 * M_PI * t / imu_period),
-                                    std::sin(2 * M_PI * t / imu_period) };
-        });
-
-        // Simulate robot walking
-        on<Trigger<Every<10, std::chrono::milliseconds>>,
-            With<Optional<messages::motion::WalkCommand>>,
-            Options<Sync<MockRobot>>>("Mock Robot walking",
-            [this](const time_t&,
-                   const std::shared_ptr<const messages::motion::WalkCommand>& walk) {
-
-            if (!cfg_.simulate_robot_walking) {
-                return;
+            double sawtooth_wave(double t, double period) {
+                return 2.0 * std::fmod(t / period, 1.0) - 1.0;
             }
 
-            auto t = absolute_time();
-
-            // Update position
-            if (walk != NULL) {
-                std::cerr << __LINE__ << std::endl;
-                robot_position_[0] += (walk->velocity[0]*cos(robot_heading_) - walk->velocity[1]*sin(robot_heading_)) * 0.015;
-                std::cerr << __LINE__ << std::endl;
-                robot_position_[1] += (walk->velocity[0]*sin(robot_heading_) + walk->velocity[1]*cos(robot_heading_)) * 0.015;
-                std::cerr << __LINE__ << std::endl;
-                robot_heading_ += (walk->rotationalSpeed) * 0.1;
-                std::cerr << __LINE__ << std::endl;
+            double square_wave(double t, double period) {
+                return std::copysign(1.0, sawtooth_wave(t, period));
             }
 
-            double imu_period = cfg_.robot_imu_drift_period;
-            world_imu_direction = { std::cos(2 * M_PI * t / imu_period),
-                                    std::sin(2 * M_PI * t / imu_period) };
-
-        });
-
-        // Simulate game controller
-        on<Trigger<Every<100, std::chrono::milliseconds>>>("Mock Game Controller", [this](const time_t&){
-
-            if (!cfg_.simulate_game_controller) {
-                return;
+            double sine_wave(double t, double period) {
+                return std::sin((2.0 * M_PI * t) / period);
             }
 
-            auto gameState = std::make_unique<messages::input::gameevents::GameState>();
-
-            // Set up game state
-            switch(cfg_.gc_phase) {
-                case 1:
-                    gameState->phase = Phase::READY;
-                    break;
-                case 2:
-                    gameState->phase = Phase::SET;
-                    break;
-                case 3:
-                    gameState->phase = Phase::PLAYING;
-                    break;
-                case 4:
-                    gameState->phase = Phase::TIMEOUT;
-                    break;
-                case 5:
-                    gameState->phase = Phase::FINISHED;
-                    break;
-                case 0:
-                default:
-                    gameState->phase = Phase::INITIAL;
-                    break;
+            double absolute_time() {
+                auto now = NUClear::clock::now();
+                auto ms_since_epoch = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+                double ms = static_cast<double>(ms_since_epoch - 1393322147502L);
+                double t = ms / 1000.0;
+                return t;
             }
 
-            switch(cfg_.gc_mode) {
-                case 1:
-                    gameState->mode = Mode::PENALTY_SHOOTOUT;
-                    break;
-                case 2:
-                    gameState->mode = Mode::OVERTIME;
-                    break;
-                case 0:
-                default:
-                    gameState->mode = Mode::NORMAL;
-                    break;
+            void MockRobot::UpdateConfiguration(
+                const messages::support::Configuration<MockRobotConfig>& config) {
+                cfg_.simulate_vision = config["SimulateVision"].as<bool>();
+                cfg_.simulate_goal_observations = config["SimulateGoalObservations"].as<bool>();
+                cfg_.simulate_ball_observations = config["SimulateBallObservations"].as<bool>();
+                cfg_.simulate_odometry = config["SimulateOdometry"].as<bool>();
+                cfg_.simulate_robot_movement = config["SimulateRobotMovement"].as<bool>();
+                cfg_.simulate_robot_walking = config["SimulateRobotWalking"].as<bool>();
+                cfg_.simulate_game_controller = config["SimulateRobotWalking"].as<bool>();
+                cfg_.robot_movement_path_period = config["RobotMovementPathPeriod"].as<double>();
+                cfg_.simulate_ball_movement = config["SimulateBallMovement"].as<bool>();
+                cfg_.emit_robot_fieldobjects = config["EmitRobotFieldobjects"].as<bool>();
+                cfg_.emit_ball_fieldobjects = config["EmitBallFieldobjects"].as<bool>();
+                cfg_.robot_imu_drift_period = config["RobotImuDriftPeriod"].as<double>();
+                cfg_.observe_left_goal = config["ObserveLeftGoal"].as<bool>();
+                cfg_.observe_right_goal = config["ObserveRightGoal"].as<bool>();
+                cfg_.distinguish_left_and_right_goals = config["DistinguishLeftAndRightGoals"].as<bool>();
+                cfg_.emit_localisation_ball_vector = config["EmitLocalisationBallVector"].as<bool>();
+
+                // Game Controller
+                cfg_.gc_first_half = config["GCFirstHalf"].as<bool>();
+                cfg_.gc_kicked_out_by_us = config["GCKickedOutByUs"].as<bool>();
+                cfg_.gc_our_kick_off = config["GCOurKickOff"].as<bool>();
+                cfg_.gc_mode = config["GCMode"].as<int>();
+                cfg_.gc_phase = config["GCPhase"].as<int>();
+                cfg_.gc_penalty_reason = config["GCPenaltyReason"].as<int>();
+                cfg_.gc_team_id = config["GCTeamID"].as<int>();
+                cfg_.gc_opponent_id = config["GCOpponentID"].as<int>();
             }
 
-            gameState->firstHalf = cfg_.gc_first_half;
-            gameState->kickedOutByUs = cfg_.gc_kicked_out_by_us;
-            gameState->ourKickOff = cfg_.gc_our_kick_off;
-            gameState->team.teamId = cfg_.gc_team_id;
-            gameState->opponent.teamId = cfg_.gc_opponent_id;
+            MockRobot::MockRobot(std::unique_ptr<NUClear::Environment> environment)
+                : Reactor(std::move(environment)) {
 
-            // Players
-            gameState->team.players.clear();
-            gameState->team.players.push_back({
-                0,
-                PenaltyReason::UNPENALISED,
-                NUClear::clock::now()
-            });
+                on<Trigger<Startup>,
+                    With<FieldDescription>>("FieldDescription Update",
+                    [this](const Startup&, const FieldDescription& desc) {
+                       field_description_ = std::make_shared<FieldDescription>(desc);
+                });
 
-            switch(cfg_.gc_penalty_reason) {
-                case 1:
-                    gameState->team.players.at(0).penaltyReason = PenaltyReason::BALL_MANIPULATION;
-                    break;
-                case 2:
-                    gameState->team.players.at(0).penaltyReason = PenaltyReason::PHYSICAL_CONTACT;
-                    break;
-                case 3:
-                    gameState->team.players.at(0).penaltyReason = PenaltyReason::ILLEGAL_ATTACK;
-                    break;
-                case 4:
-                    gameState->team.players.at(0).penaltyReason = PenaltyReason::ILLEGAL_DEFENSE;
-                    break;
-                case 5:
-                    gameState->team.players.at(0).penaltyReason = PenaltyReason::REQUEST_FOR_PICKUP;
-                    break;
-                case 6:
-                    gameState->team.players.at(0).penaltyReason = PenaltyReason::REQUEST_FOR_SERVICE;
-                    break;
-                case 7:
-                    gameState->team.players.at(0).penaltyReason = PenaltyReason::REQUEST_FOR_PICKUP_TO_SERVICE;
-                    break;
-                case 8:
-                    gameState->team.players.at(0).penaltyReason = PenaltyReason::SUBSTITUTE;
-                    break;
-                case 9:
-                    gameState->team.players.at(0).penaltyReason = PenaltyReason::MANUAL;
-                    break;
-                case 0:
-                default:
-                    gameState->team.players.at(0).penaltyReason = PenaltyReason::UNPENALISED;
-                    break;
-            }
+                on<Trigger<Configuration<MockRobotConfig>>>(
+                    "MockRobotConfig Update",
+                    [this](const Configuration<MockRobotConfig>& config) {
+                    UpdateConfiguration(config);
+                });
 
-            emit(std::move(gameState));
-
-        });
-
-        // Update ball position
-        on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Ball motion", [this](const time_t&){
-
-            if (!cfg_.simulate_ball_movement) {
-                ball_velocity_ = { 0, 0 };
-                return;
-            }
-
-            auto t = absolute_time();
-            double period = 40;
-            double x_amp = 3;
-            double y_amp = 2;
-
-            auto triangle1 = triangle_wave(t, period);
-            auto triangle2 = triangle_wave(t + (period / 4.0), period);
-            ball_position_ = { triangle1 * x_amp, triangle2 * y_amp };
-
-            auto velocity_x = -square_wave(t, period) * ((x_amp * 4) / period);
-            auto velocity_y = -square_wave(t + (period / 4.0), period) * ((y_amp * 4) / period);
-            ball_velocity_ = { velocity_x, velocity_y };
-        });
-
-        // // Simulate Odometry
-        // on<Trigger<Every<100, std::chrono::milliseconds>>>("Mock Odometry Simulation",
-        //     [this](const time_t&) {
-        //     if (!cfg_.simulate_odometry)
-        //         return;
-
-        //     auto odom = std::make_unique<messages::localisation::FakeOdometry>();
-
-        //     double heading_diff = robot_heading_ - odom_old_robot_heading_;
-        //     odom->torso_rotation = normalizeAngle(heading_diff);
-
-        //     // Calculate torso displacement in robot-space:
-        //     arma::vec2 position_diff = robot_position_ - odom_old_robot_position_;
-        //     arma::mat22 rot = rotationMatrix(robot_heading_);
-        //     odom->torso_displacement = rot * position_diff;
-
-        //     odom_old_robot_position_ = robot_position_;
-        //     odom_old_robot_heading_ = robot_heading_;
-
-        //     emit(graph("Odometry torso_displacement",
-        //         odom->torso_displacement[0],
-        //         odom->torso_displacement[1]));
-        //     emit(graph("Odometry torso_rotation", odom->torso_rotation));
-
-        //     emit(std::move(odom));
-        // });
-
-        // Simulate Vision
-        on<Trigger<Every<30, Per<std::chrono::seconds>>>,
-           Options<Sync<MockRobot>>>("Mock Vision Simulation", [this](const time_t&) {
-            if (!cfg_.simulate_vision)
-                return;
-
-            if (field_description_ == nullptr) {
-                NUClear::log(__FILE__, __LINE__, ": field_description_ == nullptr");
-                return;
-            }
-
-            // Sensors:
-            auto sensors = std::make_shared<messages::input::Sensors>();
-
-            // orientation
-            arma::vec2 robot_imu_dir_ = WorldToRobotTransform(arma::vec2({0, 0}), robot_heading_, world_imu_direction);
-            arma::mat orientation = arma::eye(3, 3);
-            orientation.submat(0, 0, 1, 0) = robot_imu_dir_;
-            orientation.submat(0, 1, 1, 1) = arma::vec2({ -robot_imu_dir_(1), robot_imu_dir_(0) });
-            sensors->orientation = orientation;
-
-            // orientationCamToGround
-            sensors->orientationCamToGround = arma::eye(4, 4);
-
-            // forwardKinematics
-            sensors->forwardKinematics[ServoID::HEAD_PITCH] = arma::eye(4, 4);
-
-            // Goal observation
-            if (cfg_.simulate_goal_observations) {
-                auto goals = std::make_unique<std::vector<messages::vision::Goal>>();
-
-                // Only observe goals that are in front of the robot
-                arma::vec3 goal_l_pos = {0, 0, 0};
-                arma::vec3 goal_r_pos = {0, 0, 0};
-                goal_l_pos.rows(0, 1) = field_description_->goalpost_yl;
-                goal_r_pos.rows(0, 1) = field_description_->goalpost_yr;
-                if (robot_heading_ < -M_PI * 0.5 || robot_heading_ > M_PI * 0.5) {
-                    goal_l_pos.rows(0, 1) = field_description_->goalpost_bl;
-                    goal_r_pos.rows(0, 1) = field_description_->goalpost_br;
-                }
-
-                if (cfg_.observe_left_goal) {
-                    messages::vision::Goal goal1;
-                    messages::vision::VisionObject::Measurement g1_m;
-                    g1_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_r_pos);
-                    g1_m.error = arma::eye(3, 3) * 0.1;
-                    goal1.measurements.push_back(g1_m);
-                    goal1.measurements.push_back(g1_m);
-                    goal1.side = messages::vision::Goal::Side::RIGHT;
-                    if (cfg_.distinguish_left_and_right_goals) {
-                        goal1.side = messages::vision::Goal::Side::RIGHT;
-                    } else {
-                        goal1.side = messages::vision::Goal::Side::UNKNOWN;
+                // Update robot position
+                on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Robot motion", [this](const time_t&) {
+                    if (!cfg_.simulate_robot_movement) {
+                        //robot_velocity_ = { 0, 0 };
+                        return;
                     }
-                    goal1.sensors = sensors;
-                    goals->push_back(goal1);
-                }
 
-                if (cfg_.observe_right_goal) {
-                    messages::vision::Goal goal2;
-                    messages::vision::VisionObject::Measurement g2_m;
-                    g2_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_l_pos);
-                    g2_m.error = arma::eye(3, 3) * 0.1;
-                    goal2.measurements.push_back(g2_m);
-                    goal2.measurements.push_back(g2_m);
-                    if (cfg_.distinguish_left_and_right_goals) {
-                        goal2.side = messages::vision::Goal::Side::LEFT;
-                    } else {
-                        goal2.side = messages::vision::Goal::Side::UNKNOWN;
+                    auto t = absolute_time();
+                    double period = cfg_.robot_movement_path_period;
+                    double x_amp = 3;
+                    double y_amp = 2;
+
+                    arma::vec old_pos = robot_position_;
+
+                    auto wave1 = triangle_wave(t, period);
+                    auto wave2 = triangle_wave(t + (period / 4.0), period);
+                    // auto wave1 = sine_wave(t, period);
+                    // auto wave2 = sine_wave(t + (period / 4.0), period);
+                    robot_position_ = { wave1 * x_amp, wave2 * y_amp };
+
+                    arma::vec diff = robot_position_ - old_pos;
+
+                    robot_heading_ = vectorToBearing(diff);
+                    robot_velocity_ = robot_heading_ / 100.0;
+
+
+                    double imu_period = cfg_.robot_imu_drift_period;
+                    world_imu_direction = { std::cos(2 * M_PI * t / imu_period), std::sin(2 * M_PI * t / imu_period) };
+                });
+
+                // Simulate robot walking
+                on<Trigger<Every<10, std::chrono::milliseconds>>,
+                    With<Optional<messages::motion::WalkCommand>>,
+                    Options<Sync<MockRobot>>>("Mock Robot walking",
+                    [this](const time_t&,
+                           const std::shared_ptr<const messages::motion::WalkCommand>& walk) {
+
+                    if (!cfg_.simulate_robot_walking) {
+                        return;
                     }
-                    goal2.sensors = sensors;
-                    goals->push_back(goal2);
-                }
 
-                if (goals->size() > 0)
-                    emit(std::move(goals));
+                    auto t = absolute_time();
+
+                    // Update position
+                    if (walk != NULL) {
+                        std::cerr << __LINE__ << std::endl;
+                        robot_position_[0] += (walk->velocity[0]*cos(robot_heading_) - walk->velocity[1]*sin(robot_heading_)) * 0.015;
+                        std::cerr << __LINE__ << std::endl;
+                        robot_position_[1] += (walk->velocity[0]*sin(robot_heading_) + walk->velocity[1]*cos(robot_heading_)) * 0.015;
+                        std::cerr << __LINE__ << std::endl;
+                        robot_heading_ += (walk->rotationalSpeed) * 0.1;
+                        std::cerr << __LINE__ << std::endl;
+                    }
+
+                    double imu_period = cfg_.robot_imu_drift_period;
+                    world_imu_direction = { std::cos(2 * M_PI * t / imu_period), std::sin(2 * M_PI * t / imu_period) };
+
+                });
+
+                // Simulate game controller
+                on<Trigger<Every<100, std::chrono::milliseconds>>>("Mock Game Controller", [this](const time_t&) {
+
+                    if (!cfg_.simulate_game_controller) {
+                        return;
+                    }
+
+                    auto gameState = std::make_unique<messages::input::gameevents::GameState>();
+
+                    // Set up game state
+                    switch(cfg_.gc_phase) {
+                        case 1:
+                            gameState->phase = Phase::READY;
+                            break;
+                        case 2:
+                            gameState->phase = Phase::SET;
+                            break;
+                        case 3:
+                            gameState->phase = Phase::PLAYING;
+                            break;
+                        case 4:
+                            gameState->phase = Phase::TIMEOUT;
+                            break;
+                        case 5:
+                            gameState->phase = Phase::FINISHED;
+                            break;
+                        case 0:
+                        default:
+                            gameState->phase = Phase::INITIAL;
+                            break;
+                    }
+
+                    switch(cfg_.gc_mode) {
+                        case 1:
+                            gameState->mode = Mode::PENALTY_SHOOTOUT;
+                            break;
+                        case 2:
+                            gameState->mode = Mode::OVERTIME;
+                            break;
+                        case 0:
+                        default:
+                            gameState->mode = Mode::NORMAL;
+                            break;
+                    }
+
+                    gameState->firstHalf = cfg_.gc_first_half;
+                    gameState->kickedOutByUs = cfg_.gc_kicked_out_by_us;
+                    gameState->ourKickOff = cfg_.gc_our_kick_off;
+                    gameState->team.teamId = cfg_.gc_team_id;
+                    gameState->opponent.teamId = cfg_.gc_opponent_id;
+
+                    // Players
+                    gameState->team.players.clear();
+                    gameState->team.players.push_back({
+                        0,
+                        PenaltyReason::UNPENALISED,
+                        NUClear::clock::now()
+                    });
+
+                    switch(cfg_.gc_penalty_reason) {
+                        case 1:
+                            gameState->team.players.at(0).penaltyReason = PenaltyReason::BALL_MANIPULATION;
+                            break;
+                        case 2:
+                            gameState->team.players.at(0).penaltyReason = PenaltyReason::PHYSICAL_CONTACT;
+                            break;
+                        case 3:
+                            gameState->team.players.at(0).penaltyReason = PenaltyReason::ILLEGAL_ATTACK;
+                            break;
+                        case 4:
+                            gameState->team.players.at(0).penaltyReason = PenaltyReason::ILLEGAL_DEFENSE;
+                            break;
+                        case 5:
+                            gameState->team.players.at(0).penaltyReason = PenaltyReason::REQUEST_FOR_PICKUP;
+                            break;
+                        case 6:
+                            gameState->team.players.at(0).penaltyReason = PenaltyReason::REQUEST_FOR_SERVICE;
+                            break;
+                        case 7:
+                            gameState->team.players.at(0).penaltyReason = PenaltyReason::REQUEST_FOR_PICKUP_TO_SERVICE;
+                            break;
+                        case 8:
+                            gameState->team.players.at(0).penaltyReason = PenaltyReason::SUBSTITUTE;
+                            break;
+                        case 9:
+                            gameState->team.players.at(0).penaltyReason = PenaltyReason::MANUAL;
+                            break;
+                        case 0:
+                        default:
+                            gameState->team.players.at(0).penaltyReason = PenaltyReason::UNPENALISED;
+                            break;
+                    }
+
+                    emit(std::move(gameState));
+
+                });
+
+                // Update ball position
+                on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Ball Motion", [this](const time_t&){
+
+                    if (!cfg_.simulate_ball_movement) {
+                        ball_velocity_ = { 0, 0 };
+                        return;
+                    }
+
+                    auto t = absolute_time();
+                    double period = 40;
+                    double x_amp = 3;
+                    double y_amp = 2;
+
+                    auto triangle1 = triangle_wave(t, period);
+                    auto triangle2 = triangle_wave(t + (period / 4.0), period);
+                    ball_position_ = { triangle1 * x_amp, triangle2 * y_amp };
+
+                    auto velocity_x = -square_wave(t, period) * ((x_amp * 4) / period);
+                    auto velocity_y = -square_wave(t + (period / 4.0), period) * ((y_amp * 4) / period);
+                    ball_velocity_ = { velocity_x, velocity_y };
+                });
+
+                // // Simulate Odometry
+                // on<Trigger<Every<100, std::chrono::milliseconds>>>("Mock Odometry Simulation", [this](const time_t&) {
+                //     if (!cfg_.simulate_odometry) {
+                //         return;
+                //     }
+
+                //     auto odom = std::make_unique<messages::localisation::FakeOdometry>();
+
+                //     double heading_diff = robot_heading_ - odom_old_robot_heading_;
+                //     odom->torso_rotation = normalizeAngle(heading_diff);
+
+                //     // Calculate torso displacement in robot-space:
+                //     arma::vec2 position_diff = robot_position_ - odom_old_robot_position_;
+                //     arma::mat22 rot = rotationMatrix(robot_heading_);
+                //     odom->torso_displacement = rot * position_diff;
+
+                //     odom_old_robot_position_ = robot_position_;
+                //     odom_old_robot_heading_ = robot_heading_;
+
+                //     emit(graph("Odometry torso_displacement", odom->torso_displacement[0], odom->torso_displacement[1]));
+                //     emit(graph("Odometry torso_rotation", odom->torso_rotation));
+
+                //     emit(std::move(odom));
+                // });
+
+                // Simulate Vision
+                on<Trigger<Every<30, Per<std::chrono::seconds>>>,
+                   Options<Sync<MockRobot>>>("Mock Vision Simulation", [this](const time_t&) {
+                    if (!cfg_.simulate_vision) {
+                        return;
+                    }
+
+                    if (field_description_ == nullptr) {
+                        NUClear::log(__FILE__, __LINE__, ": field_description_ == nullptr");
+                        return;
+                    }
+
+                    // Sensors:
+                    auto sensors = std::make_shared<messages::input::Sensors>();
+
+                    // orientation
+                    arma::vec2 robot_imu_dir_ = WorldToRobotTransform(arma::vec2({0, 0}), robot_heading_, world_imu_direction);
+                    arma::mat orientation = arma::eye(3, 3);
+                    orientation.submat(0, 0, 1, 0) = robot_imu_dir_;
+                    orientation.submat(0, 1, 1, 1) = arma::vec2({ -robot_imu_dir_(1), robot_imu_dir_(0) });
+                    sensors->orientation = orientation;
+
+                    // orientationCamToGround
+                    sensors->orientationCamToGround = arma::eye(4, 4);
+
+                    // forwardKinematics
+                    sensors->forwardKinematics[ServoID::HEAD_PITCH] = arma::eye(4, 4);
+
+                    // Goal observation
+                    if (cfg_.simulate_goal_observations) {
+                        auto goals = std::make_unique<std::vector<messages::vision::Goal>>();
+
+                        // Only observe goals that are in front of the robot
+                        arma::vec3 goal_l_pos = {0, 0, 0};
+                        arma::vec3 goal_r_pos = {0, 0, 0};
+
+                        if (robot_heading_ < -M_PI * 0.5 || robot_heading_ > M_PI * 0.5) {
+                            goal_l_pos.rows(0, 1) = field_description_->goalpost_bl;
+                            goal_r_pos.rows(0, 1) = field_description_->goalpost_br;
+                        }
+
+                        else {
+                            goal_l_pos.rows(0, 1) = field_description_->goalpost_yl;
+                            goal_r_pos.rows(0, 1) = field_description_->goalpost_yr;
+                        }
+
+                        if (cfg_.observe_left_goal) {
+                            messages::vision::Goal goal1;
+                            messages::vision::VisionObject::Measurement g1_m;
+                            g1_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_r_pos);
+                            g1_m.error = arma::eye(3, 3) * 0.1;
+                            goal1.measurements.push_back(g1_m);
+                            goal1.measurements.push_back(g1_m);
+                            goal1.side = messages::vision::Goal::Side::RIGHT;
+                            if (cfg_.distinguish_left_and_right_goals) {
+                                goal1.side = messages::vision::Goal::Side::RIGHT;
+                            } else {
+                                goal1.side = messages::vision::Goal::Side::UNKNOWN;
+                            }
+                            goal1.sensors = sensors;
+                            goals->push_back(goal1);
+                        }
+
+                        if (cfg_.observe_right_goal) {
+                            messages::vision::Goal goal2;
+                            messages::vision::VisionObject::Measurement g2_m;
+                            g2_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_l_pos);
+                            g2_m.error = arma::eye(3, 3) * 0.1;
+                            goal2.measurements.push_back(g2_m);
+                            goal2.measurements.push_back(g2_m);
+                            if (cfg_.distinguish_left_and_right_goals) {
+                                goal2.side = messages::vision::Goal::Side::LEFT;
+                            } else {
+                                goal2.side = messages::vision::Goal::Side::UNKNOWN;
+                            }
+                            goal2.sensors = sensors;
+                            goals->push_back(goal2);
+                        }
+
+                        if (goals->size() > 0)
+                            emit(std::move(goals));
+                    }
+
+                    // Ball observation
+                    if (cfg_.simulate_ball_observations) {
+                        auto ball_vec = std::make_unique<std::vector<messages::vision::Ball>>();
+
+                        messages::vision::Ball ball;
+                        messages::vision::VisionObject::Measurement b_m;
+                        arma::vec3 ball_pos_3d = {0, 0, 0};
+                        ball_pos_3d.rows(0, 1) = ball_position_;
+                        b_m.position = SphericalRobotObservation(robot_position_, robot_heading_, ball_pos_3d);
+                        b_m.error = arma::eye(3, 3) * 0.1;
+                        ball.measurements.push_back(b_m);
+                        ball.sensors = sensors;
+                        ball_vec->push_back(ball);
+
+                        emit(std::move(ball_vec));
+                    }
+
+                    emit(std::make_unique<Sensors>(*sensors));
+                });
+
+                // Emit robot to NUbugger
+                on<Trigger<Every<100, std::chrono::milliseconds>>,
+                   With<std::vector<messages::localisation::Self>>,
+                   Options<Sync<MockRobot>>>("NUbugger Output",
+                    [this](const time_t&,
+                           const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
+
+                    auto& robots = mock_robots.data;
+
+                    emit(graph("Actual robot position", robot_position_[0], robot_position_[1]));
+                    // emit(graph("Actual robot heading", robot_heading_[0], robot_heading_[1]));
+                    emit(graph("Actual robot heading", robot_heading_));
+                    emit(graph("Actual robot velocity", robot_velocity_[0], robot_velocity_[1]));
+
+                    if (robots.size() >= 1) {
+                        emit(graph("Estimated robot position", robots[0].position[0], robots[0].position[1]));
+                        emit(graph("Estimated robot heading", robots[0].heading[0], robots[0].heading[1]));
+                    }
+
+                    // Robot message
+                    if (!cfg_.emit_robot_fieldobjects) {
+                        return;
+                    }
+
+                    auto robots_msg = std::make_unique<std::vector<messages::localisation::Self>>();
+                    
+                    for (auto& model : robots) {
+                        robots_msg->push_back(model);
+                    }
+
+                    messages::localisation::Self self_marker;
+                    self_marker.position = robot_position_;
+                    self_marker.heading = bearingToUnitVector(robot_heading_);
+                    self_marker.sr_xx = 0.01;
+                    self_marker.sr_xy = 0;
+                    self_marker.sr_yy = 0.01;
+                    robots_msg->push_back(self_marker);
+
+                    emit(std::move(robots_msg));
+                });
+
+                // Emit ball to Nubugger
+                on<Trigger<Every<100, std::chrono::milliseconds>>,
+                   With<messages::localisation::Ball>,
+                   With<std::vector<messages::localisation::Self>>,
+                   Options<Sync<MockRobot>>>("NUbugger Output",
+                    [this](const time_t&,
+                           const Mock<messages::localisation::Ball>& mock_ball,
+                           const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
+                    auto& ball = mock_ball.data;
+                    auto& robots = mock_robots.data;
+
+                    if (robots.empty()) {
+                        std::cerr << "no robots" << std::endl;
+                        return;
+                    }
+
+                    arma::vec2 robot_ball_pos = RobotToWorldTransform(robots[0].position, robots[0].heading, ball.position);
+                    arma::vec2 ball_pos = RobotToWorldTransform(robot_position_, robot_heading_, ball.position);
+                    emit(graph("Estimated ball position", ball_pos[0], ball_pos[1]));
+                    // emit(graph("Estimated ball velocity", state[2], state[3]));
+                    emit(graph("Actual ball position", ball_position_[0], ball_position_[1]));
+                    emit(graph("Actual ball velocity", ball_velocity_[0], ball_velocity_[1]));
+
+                    // Ball message
+                    if (!cfg_.emit_ball_fieldobjects) {
+                        return;
+                    }
+                    
+                    if (cfg_.emit_localisation_ball_vector) {
+                        auto balls_msg = std::make_unique<std::vector<messages::localisation::Ball>>();
+
+
+                        messages::localisation::Ball ball_model;
+                        ball_model.position = ball_pos;
+                        ball_model.velocity = ball_velocity_;
+                        ball_model.sr_xx = ball.sr_xx;
+                        ball_model.sr_xy = ball.sr_xy;
+                        ball_model.sr_yy = ball.sr_yy;
+                        ball_model.world_space = true;
+                        balls_msg->push_back(ball_model);
+
+                        messages::localisation::Ball ball_marker;
+                        ball_marker.position = ball_position_;
+                        ball_marker.velocity = ball_velocity_;
+                        ball_marker.sr_xx = 0.01;
+                        ball_marker.sr_xy = 0;
+                        ball_marker.sr_yy = 0.01;
+                        ball_marker.world_space = true;
+                        balls_msg->push_back(ball_marker);
+    
+                        messages::localisation::Ball robot_ball;
+                        robot_ball.position = robot_ball_pos;
+                        robot_ball.velocity = ball_velocity_;
+                        robot_ball.sr_xx = 0.01;
+                        robot_ball.sr_xy = 0;
+                        robot_ball.sr_yy = 0.01;
+                        robot_ball.world_space = true;
+                        balls_msg->push_back(robot_ball);
+
+                        std::cerr << "emit(std::move(std::vector<messages::localisation::Ball>));" << std::endl;
+                        emit(std::move(balls_msg));
+                    }
+
+                    else {
+                        auto balls_msg = std::make_unique<messages::localisation::Ball>();
+
+                        balls_msg->position = ball_pos;
+                        balls_msg->velocity = ball_velocity_;
+                        balls_msg->sr_xx = 0.01;
+                        balls_msg->sr_xy = 0;
+                        balls_msg->sr_yy = 0.01;
+                        balls_msg->world_space = true;
+
+                        std::cerr << "emit(std::move(messages::localisation::Ball));" << std::endl;
+                        emit(std::move(balls_msg));
+                    }
+                });
             }
-
-            // Ball observation
-            if (cfg_.simulate_ball_observations) {
-                auto ball_vec = std::make_unique<std::vector<messages::vision::Ball>>();
-
-                messages::vision::Ball ball;
-                messages::vision::VisionObject::Measurement b_m;
-                arma::vec3 ball_pos_3d = {0, 0, 0};
-                ball_pos_3d.rows(0, 1) = ball_position_;
-                b_m.position = SphericalRobotObservation(robot_position_, robot_heading_, ball_pos_3d);
-                b_m.error = arma::eye(3, 3) * 0.1;
-                ball.measurements.push_back(b_m);
-                ball.sensors = sensors;
-                ball_vec->push_back(ball);
-
-                emit(std::move(ball_vec));
-            }
-
-            emit(std::make_unique<Sensors>(*sensors));
-        });
-
-        // Emit robot to NUbugger
-        on<Trigger<Every<100, std::chrono::milliseconds>>,
-           With<std::vector<messages::localisation::Self>>,
-           Options<Sync<MockRobot>>>("NUbugger Output",
-            [this](const time_t&,
-                   const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
-
-            auto& robots = mock_robots.data;
-
-            emit(graph("Actual robot position", robot_position_[0], robot_position_[1]));
-            // emit(graph("Actual robot heading", robot_heading_[0], robot_heading_[1]));
-            emit(graph("Actual robot heading", robot_heading_));
-            emit(graph("Actual robot velocity", robot_velocity_[0], robot_velocity_[1]));
-
-            if (robots.size() >= 1) {
-                emit(graph("Estimated robot position", robots[0].position[0], robots[0].position[1]));
-                emit(graph("Estimated robot heading", robots[0].heading[0], robots[0].heading[1]));
-            }
-
-            // Robot message
-            if (!cfg_.emit_robot_fieldobjects)
-                return;
-
-            auto robots_msg = std::make_unique<std::vector<messages::localisation::Self>>();
-            
-            for (auto& model : robots) {
-                robots_msg->push_back(model);
-            }
-
-            messages::localisation::Self self_marker;
-            self_marker.position = robot_position_;
-            self_marker.heading = bearingToUnitVector(robot_heading_);
-            self_marker.sr_xx = 0.01;
-            self_marker.sr_xy = 0;
-            self_marker.sr_yy = 0.01;
-            robots_msg->push_back(self_marker);
-
-            emit(std::move(robots_msg));
-        });
-
-        // Emit ball to Nubugger
-        on<Trigger<Every<100, std::chrono::milliseconds>>,
-           With<messages::localisation::Ball>,
-           With<std::vector<messages::localisation::Self>>,
-           Options<Sync<MockRobot>>>("NUbugger Output",
-            [this](const time_t&,
-                   const Mock<messages::localisation::Ball>& mock_ball,
-                   const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
-            auto& ball = mock_ball.data;
-            auto& robots = mock_robots.data;
-
-            if (robots.empty())
-                std::cerr << "no robots" << std::endl;
-                return;
-
-            arma::vec2 robot_ball_pos = RobotToWorldTransform(
-                robots[0].position, robots[0].heading, ball.position);
-            arma::vec2 ball_pos = RobotToWorldTransform(
-                robot_position_, robot_heading_, ball.position);
-            emit(graph("Estimated ball position", ball_pos[0], ball_pos[1]));
-            // emit(graph("Estimated ball velocity", state[2], state[3]));
-            emit(graph("Actual ball position", ball_position_[0], ball_position_[1]));
-            emit(graph("Actual ball velocity", ball_velocity_[0], ball_velocity_[1]));
-
-            // Ball message
-            if (!cfg_.emit_ball_fieldobjects)
-                return;
-            
-            auto balls_msg = std::make_unique<messages::localisation::Ball>();
-
-            balls_msg->position = ball_pos;
-            balls_msg->velocity = ball_velocity_;
-            balls_msg->sr_xx = 0.01;
-            balls_msg->sr_xy = 0;
-            balls_msg->sr_yy = 0.01;
-            balls_msg->world_space = true;
-
-//            messages::localisation::Ball ball_marker;
-//            ball_marker.position = ball_position_;
-//            ball_marker.velocity = ball_velocity_;
-//            ball_marker.sr_xx = 0.01;
-//            ball_marker.sr_xy = 0;
-//            ball_marker.sr_yy = 0.01;
-//            ball_marker.world_space = true;
-//            balls_msg->push_back(ball_marker);
-
-//            messages::localisation::Ball robot_ball;
-//            robot_ball.position = robot_ball_pos;
-//            robot_ball.velocity = ball_velocity_;
-//            robot_ball.sr_xx = 0.01;
-//            robot_ball.sr_xy = 0;
-//            robot_ball.sr_yy = 0.01;
-//            robot_ball.world_space = true;
-//            balls_msg->push_back(robot_ball);
-std::cerr << "emit(std::move(std::vector<messages::localisation::Ball>));" << std::endl;
-            emit(std::move(balls_msg));
-        });
+        }
     }
 }
-}
-
