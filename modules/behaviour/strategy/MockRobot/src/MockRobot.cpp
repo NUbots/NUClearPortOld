@@ -109,7 +109,7 @@ namespace modules {
                 cfg_.simulate_odometry = config["SimulateOdometry"].as<bool>();
                 cfg_.simulate_robot_movement = config["SimulateRobotMovement"].as<bool>();
                 cfg_.simulate_robot_walking = config["SimulateRobotWalking"].as<bool>();
-                cfg_.simulate_game_controller = config["SimulateRobotWalking"].as<bool>();
+                cfg_.simulate_game_controller = config["SimulateGameController"].as<bool>();
                 cfg_.robot_movement_path_period = config["RobotMovementPathPeriod"].as<double>();
                 cfg_.simulate_ball_movement = config["SimulateBallMovement"].as<bool>();
                 cfg_.simulate_ball_velocity_decay = config["SimulateBallVelocityDecay"].as<bool>();

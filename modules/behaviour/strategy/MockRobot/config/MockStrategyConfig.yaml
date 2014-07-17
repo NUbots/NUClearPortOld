@@ -7,13 +7,16 @@ SimulateRobotWalking: false
 SimulateGameController: true
 RobotMovementPathPeriod: 100
 SimulateBallMovement: true
+SimulateBallVelocityDecay: true
+BallVelocityDecay: -1.5
+InitialKickVelocity: 4
 EmitRobotFieldobjects: true
 EmitBallFieldobjects: true
 RobotImuDriftPeriod: 300
-ObserveLeftGoal: yes
-ObserveRightGoal: yes
-DistinguishLeftAndRightGoals: yes
-EmitLocalisationBallVector: yes
+ObserveLeftGoal: true
+ObserveRightGoal: true
+DistinguishLeftAndRightGoals: true
+EmitLocalisationBallVector: true
 
 # Game Controller
 GCFirstHalf: true
