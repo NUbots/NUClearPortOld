@@ -102,6 +102,10 @@ namespace modules {
                     double max_pitch;
                     double screen_padding;
                     double distance_threshold;
+
+                    // Camera parameters.
+                    double camera_height;
+                    arma::vec2 FOV;
                 } cfg_;
 
             public:

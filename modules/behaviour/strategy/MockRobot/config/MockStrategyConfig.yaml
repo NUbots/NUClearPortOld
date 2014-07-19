@@ -56,9 +56,14 @@ GCPenaltyReason: 0
 # Look strategies.
 FastSpeed : 1.2
 SlowSpeed : 0.6
-minYaw : -1.5
-maxYaw : 1.5
-minPitch : -1.2
-maxPitch : 1.2
-screenPadding : 0.15
-distanceThreshold : 0.15
+MinYaw : -1.5
+MaxYaw : 1.5
+MinPitch : -1.2
+MaxPitch : 1.2
+ScreenPadding : 0.15
+DistanceThreshold : 0.15
+
+# Camera parameters.
+CameraHeight: 0.45
+FOV_X: 1.0472
+FOV_Y: 0.785398

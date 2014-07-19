@@ -113,7 +113,6 @@ namespace modules {
                 cfg_.robot_movement_path_period = config["RobotMovementPathPeriod"].as<double>();
                 cfg_.simulate_ball_movement = config["SimulateBallMovement"].as<bool>();
                 cfg_.simulate_ball_velocity_decay = config["SimulateBallVelocityDecay"].as<bool>();
-                cfg_.ball_velocity_decay = config["BallVelocityDecay"].as<double>();
                 cfg_.initial_kick_velocity = config["InitialKickVelocity"].as<double>();
                 cfg_.emit_robot_fieldobjects = config["EmitRobotFieldobjects"].as<bool>();
                 cfg_.emit_ball_fieldobjects = config["EmitBallFieldobjects"].as<bool>();
@@ -139,12 +138,16 @@ namespace modules {
                 cfg_.slow_speed = config["SlowSpeed"].as<double>();
 
                 // Head limits.
-                cfg_.min_yaw = config["minYaw"].as<double>();
-                cfg_.max_yaw = config["maxYaw"].as<double>();
-                cfg_.min_pitch = config["minPitch"].as<double>();
-                cfg_.max_pitch = config["maxPitch"].as<double>();
-                cfg_.screen_padding = config["screenPadding"].as<double>();
-                cfg_.distance_threshold = config["distanceThreshold"].as<double>();
+                cfg_.min_yaw = config["MinYaw"].as<double>();
+                cfg_.max_yaw = config["MaxYaw"].as<double>();
+                cfg_.min_pitch = config["MinPitch"].as<double>();
+                cfg_.max_pitch = config["MaxPitch"].as<double>();
+                cfg_.screen_padding = config["ScreenPadding"].as<double>();
+                cfg_.distance_threshold = config["DistanceThreshold"].as<double>();
+
+                // Camera parameters.
+                cfg_.camera_height = config["CameraHeight"].as<double>();
+                cfg_.FOV = {config["FOV_X"].as<double>(), config["FOV_Y"].as<double>()};
             }
 
             MockRobot::MockRobot(std::unique_ptr<NUClear::Environment> environment)
@@ -402,8 +405,8 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                         // Only observe goals that are in front of the robot
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                        arma::vec3 goal_l_pos;
-                        arma::vec3 goal_r_pos;
+                        arma::vec3 goal_l_pos = {0, 0, field_description_->goalpost_top_height - cfg_.camera_height};
+                        arma::vec3 goal_r_pos = {0, 0, field_description_->goalpost_top_height - cfg_.camera_height};
 
                         if (robot_heading_ < -M_PI * 0.5 || robot_heading_ > M_PI * 0.5) {
                             goal_l_pos.rows(0, 1) = field_description_->goalpost_bl;
@@ -420,6 +423,11 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             messages::vision::VisionObject::Measurement g1_m;
                             g1_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_r_pos);
                             g1_m.error = arma::eye(3, 3) * 0.1;
+
+                            // Factor in head yaw and pitch.
+                            g1_m.position[0] -= headYaw;
+                            g1_m.position[1] -= headPitch;
+
                             goal1.measurements.push_back(g1_m);
                             goal1.measurements.push_back(g1_m);
 
@@ -432,7 +440,11 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             }
 
                             goal1.sensors = sensors;
-                            goals->push_back(goal1);
+
+                            // Make sure the goal is actually within our field of view.
+                            if ((std::fabs(g1_m.position[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(g1_m.position[1]) < (cfg_.FOV[1] / 2))) {
+                                goals->push_back(goal1);
+                            }
                         }
 
                         if (cfg_.observe_right_goal) {
@@ -440,6 +452,11 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             messages::vision::VisionObject::Measurement g2_m;
                             g2_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_l_pos);
                             g2_m.error = arma::eye(3, 3) * 0.1;
+
+                            // Factor in head yaw and pitch.
+                            g2_m.position[0] -= headYaw;
+                            g2_m.position[1] -= headPitch;
+
                             goal2.measurements.push_back(g2_m);
                             goal2.measurements.push_back(g2_m);
 
@@ -452,7 +469,11 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             }
 
                             goal2.sensors = sensors;
-                            goals->push_back(goal2);
+
+                            // Make sure the goal is actually within our field of view.
+                            if ((std::fabs(g2_m.position[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(g2_m.position[1]) < (cfg_.FOV[1] / 2))) {
+                                goals->push_back(goal2);
+                            }
                         }
 
                         if (goals->size() > 0) {
@@ -466,15 +487,23 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                         messages::vision::Ball ball;
                         messages::vision::VisionObject::Measurement b_m;
-                        arma::vec3 ball_pos_3d = {0, 0, 0};
+                        arma::vec3 ball_pos_3d = {0, 0, field_description_->ball_radius - cfg_.camera_height};
                         ball_pos_3d.rows(0, 1) = ball_position_;
                         b_m.position = SphericalRobotObservation(robot_position_, robot_heading_, ball_pos_3d);
                         b_m.error = arma::eye(3, 3) * 0.1;
+
+                        // Factor in head yaw and pitch.
+                        b_m.position[0] -= headYaw;
+                        b_m.position[1] -= headPitch;
+
                         ball.measurements.push_back(b_m);
                         ball.sensors = sensors;
                         ball_vec->push_back(ball);
 
-                        emit(std::move(ball_vec));
+                        // Make sure the ball is actually within our field of view.
+                        if ((std::fabs(b_m.position[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(b_m.position[1]) < (cfg_.FOV[1] / 2))) {
+                            emit(std::move(ball_vec));
+                        }
                     }
 
                     emit(std::make_unique<Sensors>(*sensors));
