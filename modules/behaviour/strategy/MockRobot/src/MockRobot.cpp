@@ -113,6 +113,7 @@ namespace modules {
                 cfg_.robot_movement_path_period = config["RobotMovementPathPeriod"].as<double>();
                 cfg_.simulate_ball_movement = config["SimulateBallMovement"].as<bool>();
                 cfg_.simulate_ball_velocity_decay = config["SimulateBallVelocityDecay"].as<bool>();
+                cfg_.ball_velocity_decay = config["BallVelocityDecay"].as<double>();
                 cfg_.initial_kick_velocity = config["InitialKickVelocity"].as<double>();
                 cfg_.emit_robot_fieldobjects = config["EmitRobotFieldobjects"].as<bool>();
                 cfg_.emit_ball_fieldobjects = config["EmitBallFieldobjects"].as<bool>();
@@ -126,11 +127,11 @@ namespace modules {
                 cfg_.gc_first_half = config["GCFirstHalf"].as<bool>();
                 cfg_.gc_kicked_out_by_us = config["GCKickedOutByUs"].as<bool>();
                 cfg_.gc_our_kick_off = config["GCOurKickOff"].as<bool>();
+                cfg_.gc_team_id = config["GCTeamID"].as<int>();
+                cfg_.gc_opponent_id = config["GCOpponentID"].as<int>();
                 cfg_.gc_mode = config["GCMode"].as<int>();
                 cfg_.gc_phase = config["GCPhase"].as<int>();
                 cfg_.gc_penalty_reason = config["GCPenaltyReason"].as<int>();
-                cfg_.gc_team_id = config["GCTeamID"].as<int>();
-                cfg_.gc_opponent_id = config["GCOpponentID"].as<int>();
                 
                 // Look strategies.
                 // Pan speeds.
