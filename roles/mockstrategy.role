@@ -15,7 +15,7 @@ ADD_ROLE(
         localisation::KFBallLocalisation
 
         #Behaviour
-        behaviour::Controller
+#        behaviour::Controller
 #        behaviour::skills::Stand
 #        behaviour::skills::FallingRelax
 #        behaviour::skills::Getup
