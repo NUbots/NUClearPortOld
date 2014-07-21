@@ -37,10 +37,10 @@ namespace modules {
             private:
                 void UpdateConfiguration(const messages::support::Configuration<MockStrategyConfig>& config);
 
-                arma::vec ball_position_ = { 0, 0 };
-                arma::vec ball_velocity_ = { 0, 0 };
-                arma::vec robot_position_ = { 0, 0 };
-                arma::vec robot_velocity_ = { 0, 0 };
+                arma::vec ball_position_;
+                arma::vec ball_velocity_;
+                arma::vec robot_position_;
+                arma::vec robot_velocity_;
                 arma::vec world_imu_direction = { 0, 1 };
                 arma::vec robot_imu_direction_ = { 0, 1, 0 };
                 // arma::vec robot_heading_ = { 1, 0 };
@@ -108,6 +108,7 @@ namespace modules {
                     // Camera parameters.
                     double camera_height;
                     arma::vec2 FOV;
+                    double goal_threshold;
                 } cfg_;
 
             public:

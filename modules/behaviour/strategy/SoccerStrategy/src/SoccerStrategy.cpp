@@ -198,8 +198,6 @@ namespace modules {
 
 			// Check to see if both feet are on the ground.
 			on<Trigger<messages::input::Sensors>>([this](const messages::input::Sensors& sensors) {
-std::cerr << "sensors.leftFootDown = " << ((sensors.leftFootDown) ? "Yes" : "No") << std::endl;
-std::cerr << "sensors.rightFootDown = " << ((sensors.rightFootDown) ? "Yes" : "No") << std::endl;
 				feetOffGround = (!sensors.leftFootDown && !sensors.rightFootDown);
 			});
 
@@ -317,7 +315,6 @@ std::cerr << "currentState.position[1]: " << currentState.position[1] << std::en
 
 					// Have I been picked up?
 					currentState.pickedUp = feetOffGround && !isGettingUp && !isDiving;
-std::cerr << "pickedUp = " << ((currentState.pickedUp) ? "Yes" : "No") << std::endl;
 
 					// Have I been penalised or unpenalised?
 					if (gameState != NULL) { 
@@ -765,7 +762,7 @@ std::cerr << "pickedUp = " << ((currentState.pickedUp) ? "Yes" : "No") << std::e
 			//TODO figure out what these should do
 
 			void SoccerStrategy::findSelfAndBall(){
-//std::cerr << __func__ << std::endl;
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 				// If we haven't seen the ball for some time now, look for the ball.
 				// Otherwise look for the goal.
 				// Try to mix these two actions nicely so we can get good localisation as well as adequate knowledge of the ball location.
@@ -796,21 +793,23 @@ std::cerr << "pickedUp = " << ((currentState.pickedUp) ? "Yes" : "No") << std::e
 			}
 
 			void SoccerStrategy::findSelf() {
-//std::cerr << __func__ << std::endl;
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 				// We can't be looking at both the ball and goal simulatenously.
 				if (lookingAtBall) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 					emit(std::make_unique<LookAtBallStop>());
 				}
 
 				// Looking for the goals should help localisation to converge on our position.
 				// Prevent spamming.
 				if (!lookingAtGoal) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 					emit(std::make_unique<LookAtGoalStart>());
 				}
 			}
 
 			void SoccerStrategy::findBall() {
-//std::cerr << __func__ << std::endl;
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 				// We can't be looking at both the ball and goal simulatenously.
 				if (lookingAtGoal) {
 					emit(std::make_unique<LookAtGoalStop>());

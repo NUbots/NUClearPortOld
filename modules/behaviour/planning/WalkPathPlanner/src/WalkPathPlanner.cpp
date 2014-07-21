@@ -133,7 +133,6 @@ namespace modules {
 
                     if(planType == messages::behaviour::WalkApproach::StandStill){
                         emit(std::make_unique<WalkStopCommand>());
-std::cout << "emit(std::make_unique<WalkStopCommand>());" << std::endl;
                         return;
                      } else if(planType == messages::behaviour::WalkApproach::DirectCommand){
                         std::unique_ptr<WalkCommand> command = std::make_unique<WalkCommand>();
@@ -141,8 +140,6 @@ std::cout << "emit(std::make_unique<WalkStopCommand>());" << std::endl;
                         command->rotationalSpeed = currentTargetHeading[0];
                         emit(std::move(command));                        
                         emit(std::move(std::make_unique<WalkStartCommand>()));
-std::cout << "emit(std::move(command));" << std::endl;
-std::cout << "emit(std::move(std::make_unique<WalkStartCommand>()));" << std::endl;
                         return;
                     }
 
@@ -196,14 +193,13 @@ std::cout << "emit(std::move(std::make_unique<WalkStartCommand>()));" << std::en
                     emit(graph("Walk command:", command->velocity[0], command->velocity[1], command->rotationalSpeed));
                     emit(std::move(std::make_unique<WalkStartCommand>()));
                     emit(std::move(command));//XXX: emit here
-std::cout << "emit(std::move(command));" << std::endl;
                 });
 
                 on<Trigger<messages::behaviour::WalkStrategy>, Options<Sync<WalkPathPlanner>>>([this] (const messages::behaviour::WalkStrategy& cmd) {
                     //reset hysteresis variables when a command changes
                     turning = 0;
                     distanceIncrement = 3;
-std::cout << "on<Trigger<messages::behaviour::WalkStrategy>" << std::endl;
+
                     //save the plan
                     planType = cmd.walkMovementType;
                     targetHeading = cmd.targetHeadingType;

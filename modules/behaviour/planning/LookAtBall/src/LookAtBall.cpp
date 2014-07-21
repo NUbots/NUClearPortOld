@@ -52,8 +52,13 @@ namespace modules {
 			        BALL_UNCERNTAINTY_THRESHOLD = config["BALL_UNCERTAINTY_THRESHOLD"].as<float>();	
                 });
 
+                on<Trigger<Startup>>([this](const Startup&) {
+					handle.disable();
+                });
+
 		on<Trigger<LookAtBallStart>>([this](const LookAtBallStart&) {
 			if (!handle.enabled()) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 				handle.enable();
 			}
 		});
@@ -61,6 +66,7 @@ namespace modules {
 
 		on<Trigger<LookAtBallStop>>([this](const LookAtBallStop&) {
 			if (handle.enabled()) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 				handle.disable();
 			}
 		});
@@ -78,6 +84,7 @@ namespace modules {
             const bool ballIsLost = utility::time::TimeDifferenceSeconds(NUClear::clock::now(),timeLastSeen) > BALL_SEARCH_TIMEOUT_MILLISECONDS;
             const bool ballIsUncertain = (ball != NULL) ? ((ball->sr_xx > BALL_UNCERNTAINTY_THRESHOLD) || (ball->sr_yy > BALL_UNCERNTAINTY_THRESHOLD)) : true;
             
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
             //if balls are seen, then place those and everything else that's useful into the look at list
 			if (balls.size() > 0) {
 				timeLastSeen = NUClear::clock::now();
@@ -95,6 +102,7 @@ namespace modules {
 			} 
 			// if the ball isn't seen this frame, but we're certain of where it is, look there
 			else if ((ball != NULL) && !ballIsUncertain) {
+std::cerr << "LookAtBall.cpp: ball->position[0] = " << ball->position[0] << " ball->position[1] = " << ball->position[1] << std::endl;
 			    std::vector<LookAtAngle> angles;
 			    arma::vec2 screenAngular = utility::motion::kinematics::calculateHeadJointsToLookAt(
 			                                            {ball->position[0], ball->position[1], 0}, 
