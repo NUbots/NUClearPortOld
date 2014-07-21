@@ -26,7 +26,7 @@
 #include "messages/vision/VisionObjects.h"
 #include "messages/motion/WalkCommand.h"
 #include "messages/motion/KickCommand.h"
-#include "utility/nubugger/NUgraph.h"
+#include "utility/nubugger/NUhelpers.h"
 
 
 namespace modules {
@@ -112,11 +112,6 @@ namespace modules {
                     emit(std::move(std::make_unique<WalkStartCommand>()));
                 });
 
-
-                on<Trigger<Startup>>([this](const Startup&) {
-                    emit(std::make_unique<WalkStartCommand>());
-                });
-
                 on<Trigger<Every<20, Per<std::chrono::seconds>>>,
                     With<messages::localisation::Ball>,
                     With<std::vector<messages::localisation::Self>>,
@@ -138,7 +133,7 @@ namespace modules {
                         std::unique_ptr<WalkCommand> command = std::make_unique<WalkCommand>();
                         command->velocity = currentTargetPosition;
                         command->rotationalSpeed = currentTargetHeading[0];
-                        emit(std::move(command));                        
+                        emit(std::move(command));
                         emit(std::move(std::make_unique<WalkStartCommand>()));
                         return;
                     }
@@ -171,7 +166,7 @@ namespace modules {
                     arma::vec movePlan = arma::vec({0.0,0.0,0.0});
 
                     if(planType == messages::behaviour::WalkApproach::ApproachFromDirection) {
-                        movePlan = approachFromDirection(selfs.front(),targetPos,targetHead);  
+                        movePlan = approachFromDirection(selfs.front(),targetPos,targetHead);
                     } else if(planType == messages::behaviour::WalkApproach::WalkToPoint) {
                         movePlan = goToPoint(selfs.front(),targetPos,targetHead);
                     } else if(planType == messages::behaviour::WalkApproach::OmnidirectionalReposition) {
@@ -183,7 +178,7 @@ namespace modules {
                         //this is a vision-based temporary for avoidance
                         movePlan = avoidObstacles(*robots,movePlan);
                     }
-                    
+
                     //this applies limits and hysteresis to movement
                     movePlan = generateWalk(movePlan,
                                             planType == messages::behaviour::WalkApproach::OmnidirectionalReposition);

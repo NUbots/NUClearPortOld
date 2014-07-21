@@ -1,5 +1,5 @@
-GoalieStrategy
-==============
+NUbuggerLite
+============
 
 ## Description
 
