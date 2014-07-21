@@ -29,13 +29,13 @@ namespace modules {
     namespace behaviour {
         namespace strategy {
 
-            struct MockRobotConfig {
+            struct MockStrategyConfig {
                 static constexpr const char* CONFIGURATION_PATH = "MockStrategyConfig.yaml";
             };
 
             class MockRobot : public NUClear::Reactor {
             private:
-                void UpdateConfiguration(const messages::support::Configuration<MockRobotConfig>& config);
+                void UpdateConfiguration(const messages::support::Configuration<MockStrategyConfig>& config);
 
                 arma::vec ball_position_ = { 0, 0 };
                 arma::vec ball_velocity_ = { 0, 0 };

@@ -52,7 +52,7 @@ namespace modules {
             using utility::nubugger::graph;
             using messages::support::Configuration;
             using messages::support::FieldDescription;
-            using modules::behaviour::strategy::MockRobotConfig;
+            using modules::behaviour::strategy::MockStrategyConfig;
             using messages::localisation::Mock;
             using messages::input::gameevents::GameState;
             using messages::input::gameevents::Phase;
@@ -101,7 +101,7 @@ namespace modules {
                          :                     3; // right
             }
 
-            void MockRobot::UpdateConfiguration(const messages::support::Configuration<MockRobotConfig>& config) {
+            void MockRobot::UpdateConfiguration(const messages::support::Configuration<MockStrategyConfig>& config) {
 //std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 cfg_.simulate_vision = config["SimulateVision"].as<bool>();
                 cfg_.simulate_goal_observations = config["SimulateGoalObservations"].as<bool>();
@@ -157,9 +157,10 @@ namespace modules {
                 on<Trigger<FieldDescription>>("FieldDescription Update", [this](const FieldDescription& desc) {
 //std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                        field_description_ = std::make_shared<FieldDescription>(desc);
+                       robot_position_ = { -1, 0 };
                 });
 
-                on<Trigger<Configuration<MockRobotConfig>>>("MockRobotConfig Update", [this](const Configuration<MockRobotConfig>& config) {
+                on<Trigger<Configuration<MockStrategyConfig>>>("MockStrategyConfig Update", [this](const Configuration<MockStrategyConfig>& config) {
 //std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     UpdateConfiguration(config);
                 });
@@ -212,11 +213,11 @@ namespace modules {
                     if (walk != NULL) {
 //std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         std::cerr << __LINE__ << std::endl;
-                        robot_position_[0] += (walk->velocity[0]*cos(robot_heading_) - walk->velocity[1]*sin(robot_heading_)) * 15;
+                        robot_position_[0] += (walk->velocity[0]*cos(robot_heading_) - walk->velocity[1]*sin(robot_heading_)) * 0.015;
                         std::cerr << __LINE__ << std::endl;
-                        robot_position_[1] += (walk->velocity[0]*sin(robot_heading_) + walk->velocity[1]*cos(robot_heading_)) * 15;
+                        robot_position_[1] += (walk->velocity[0]*sin(robot_heading_) + walk->velocity[1]*cos(robot_heading_)) * 0.015;
                         std::cerr << __LINE__ << std::endl;
-                        robot_heading_ += (walk->rotationalSpeed) * 10;
+                        robot_heading_ += (walk->rotationalSpeed) * 0.1;
                         std::cerr << __LINE__ << std::endl;
                     }
 
@@ -313,6 +314,7 @@ namespace modules {
                             break;
                     }
 
+//std::cerr << "emit(std::move(messages::input::gameevents::GameState))" << std::endl;
                     emit(std::move(gameState));
                 });
 
@@ -410,8 +412,8 @@ namespace modules {
 
                         // Only observe goals that are in front of the robot
 //std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                        arma::vec3 goal_l_pos = {0, 0, field_description_->goalpost_top_height - cfg_.camera_height};
-                        arma::vec3 goal_r_pos = {0, 0, field_description_->goalpost_top_height - cfg_.camera_height};
+                        arma::vec3 goal_l_pos = {0, 0, 0/*field_description_->goalpost_top_height - cfg_.camera_height*/};
+                        arma::vec3 goal_r_pos = {0, 0, 0/*field_description_->goalpost_top_height - cfg_.camera_height*/};
 
                         if (robot_heading_ < -M_PI * 0.5 || robot_heading_ > M_PI * 0.5) {
                             goal_l_pos.rows(0, 1) = field_description_->goalpost_bl;
@@ -447,6 +449,10 @@ namespace modules {
                             goal1.sensors = sensors;
 
                             // Make sure the goal is actually within our field of view.
+                            std::cerr << "left_goal std::fabs(g1_m.position[0]) = " << std::fabs(g1_m.position[0]) << std::endl;
+                            std::cerr << "left_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
+                            std::cerr << "left_goal std::fabs(g1_m.position[1]) = " << std::fabs(g1_m.position[1]) << std::endl;
+                            std::cerr << "left_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
                             if ((std::fabs(g1_m.position[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(g1_m.position[1]) < (cfg_.FOV[1] / 2))) {
                                 goals->push_back(goal1);
                             }
@@ -476,11 +482,17 @@ namespace modules {
                             goal2.sensors = sensors;
 
                             // Make sure the goal is actually within our field of view.
+                            std::cerr << "right_goal std::fabs(g2_m.position[0]) = " << std::fabs(g2_m.position[0]) << std::endl;
+                            std::cerr << "right_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
+                            std::cerr << "right_goal std::fabs(g2_m.position[1]) = " << std::fabs(g2_m.position[1]) << std::endl;
+                            std::cerr << "right_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
                             if ((std::fabs(g2_m.position[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(g2_m.position[1]) < (cfg_.FOV[1] / 2))) {
                                 goals->push_back(goal2);
                             }
                         }
-
+//std::cerr << "headYaw = " << headYaw << std::endl;
+//std::cerr << "headPitch = " << headPitch << std::endl;
+//std::cerr << "goal size = " << goals->size() << std::endl;
                         emit(std::move(goals));
 //                        if (goals->size() > 0) {
 //                            emit(std::move(goals));
@@ -509,7 +521,7 @@ namespace modules {
                         if ((std::fabs(b_m.position[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(b_m.position[1]) < (cfg_.FOV[1] / 2))) {
                             ball_vec->push_back(ball);
                         }
-
+//std::cerr << "emit(std::move(std::vector<messages::vision::Ball>))" << std::endl;
                         emit(std::move(ball_vec));
                     }
 
@@ -539,6 +551,7 @@ namespace modules {
                     auto robots_msg = std::make_unique<std::vector<messages::localisation::Self>>();
                     
                     for (auto& model : robots) {
+                        std::cerr << "emit(self); position[0] = " << model.position[0] << " position[1] = " << model.position[1] << std::endl;
                         robots_msg->push_back(model);
                     }
 
@@ -550,7 +563,7 @@ namespace modules {
                     self_marker.sr_yy = 0.01;
                     robots_msg->push_back(self_marker);
 
-//std::cerr << "emit(std::move(std::vector<messages::localisation::Self>));" << std::endl;
+std::cerr << "emit(self); position[0] = " << self_marker.position[0] << " position[1] = " << self_marker.position[1] << std::endl;
                     emit(std::move(robots_msg));
                 });
 
@@ -767,7 +780,7 @@ namespace modules {
                 });
                     
                 // Give the ball velocity when it is kicked
-                on<Trigger<KickCommand>>([this] (const KickCommand& kickCommand) {
+                on<Trigger<KickCommand>>("MockStrategy KickCommand", [this](const KickCommand& kickCommand) {
                     auto direction = kickCommand.direction;
                     auto leg = kickCommand.leg;
 

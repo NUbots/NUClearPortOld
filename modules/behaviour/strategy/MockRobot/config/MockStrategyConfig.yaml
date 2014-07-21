@@ -16,7 +16,7 @@ RobotImuDriftPeriod: 300
 ObserveLeftGoal: true
 ObserveRightGoal: true
 DistinguishLeftAndRightGoals: true
-EmitLocalisationBallVector: true
+EmitLocalisationBallVector: false
 
 # Game Controller
 GCFirstHalf: true
