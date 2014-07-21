@@ -172,6 +172,7 @@ namespace modules {
                         return;
                     }
 
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     auto t = absolute_time();
                     double period = cfg_.robot_movement_path_period;
                     double x_amp = 3;
@@ -179,17 +180,20 @@ namespace modules {
 
                     arma::vec old_pos = robot_position_;
 
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     auto wave1 = triangle_wave(t, period);
                     auto wave2 = triangle_wave(t + (period / 4.0), period);
                     // auto wave1 = sine_wave(t, period);
                     // auto wave2 = sine_wave(t + (period / 4.0), period);
                     robot_position_ = { wave1 * x_amp, wave2 * y_amp };
 
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     arma::vec diff = robot_position_ - old_pos;
 
                     robot_heading_ = vectorToBearing(diff);
                     robot_velocity_ = robot_heading_ / 100.0;
 
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     double imu_period = cfg_.robot_imu_drift_period;
                     world_imu_direction = { std::cos(2 * M_PI * t / imu_period), std::sin(2 * M_PI * t / imu_period) };
@@ -206,7 +210,7 @@ namespace modules {
 
                     // Update position
                     if (walk != NULL) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         std::cerr << __LINE__ << std::endl;
                         robot_position_[0] += (walk->velocity[0]*cos(robot_heading_) - walk->velocity[1]*sin(robot_heading_)) * 15;
                         std::cerr << __LINE__ << std::endl;
@@ -405,7 +409,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         auto goals = std::make_unique<std::vector<messages::vision::Goal>>();
 
                         // Only observe goals that are in front of the robot
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         arma::vec3 goal_l_pos = {0, 0, field_description_->goalpost_top_height - cfg_.camera_height};
                         arma::vec3 goal_r_pos = {0, 0, field_description_->goalpost_top_height - cfg_.camera_height};
 
@@ -477,9 +481,10 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             }
                         }
 
-                        if (goals->size() > 0) {
-                            emit(std::move(goals));
-                        }
+                        emit(std::move(goals));
+//                        if (goals->size() > 0) {
+//                            emit(std::move(goals));
+//                        }
                     }
 
                     // Ball observation
@@ -499,12 +504,13 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                         ball.measurements.push_back(b_m);
                         ball.sensors = sensors;
-                        ball_vec->push_back(ball);
 
                         // Make sure the ball is actually within our field of view.
                         if ((std::fabs(b_m.position[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(b_m.position[1]) < (cfg_.FOV[1] / 2))) {
-                            emit(std::move(ball_vec));
+                            ball_vec->push_back(ball);
                         }
+
+                        emit(std::move(ball_vec));
                     }
 
                     emit(std::make_unique<Sensors>(*sensors));
