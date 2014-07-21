@@ -2,8 +2,8 @@ SimulateVision: true
 SimulateGoalObservations: true
 SimulateBallObservations: true
 SimulateOdometry: false
-SimulateRobotMovement: true
-SimulateRobotWalking: false
+SimulateRobotMovement: false
+SimulateRobotWalking: true
 SimulateGameController: true
 RobotMovementPathPeriod: 100
 SimulateBallMovement: true
@@ -68,3 +68,4 @@ DistanceThreshold : 0.15
 CameraHeight: 0.45
 FOV_X: 1.0472
 FOV_Y: 0.785398
+GoalThreshold: 0.523599

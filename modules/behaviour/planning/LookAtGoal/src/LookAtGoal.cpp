@@ -50,6 +50,11 @@ namespace modules {
 				BALL_UNCERNTAINTY_THRESHOLD = config["BALL_UNCERTAINTY_THRESHOLD"].as<float>();	
 			});
 
+               on<Trigger<Startup>>([this](const Startup&) {
+					handle.disable();
+                });
+
+
 			on<Trigger<LookAtGoalStart>>([this](const LookAtGoalStart&) {
 std::cerr << "LookAtGoal - enabled" << std::endl;
 				handle.enable();
@@ -66,7 +71,7 @@ std::cerr << "LookAtGoal - disabled" << std::endl;
 					const Sensors& sensors, 
 					const std::shared_ptr<const messages::localisation::Ball>& ball
 				) {
-
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 				if (goals.size() > 0) {
 					timeSinceLastSeen = sensors.timestamp;
 					std::vector<LookAtPosition> angles;
@@ -118,43 +123,43 @@ std::cerr << "LookAtGoal - disabled" << std::endl;
 				emit(std::make_unique<std::vector<LookAtPosition>>(angles));
 			} 
 
-				else if(std::chrono::duration<float, std::ratio<1,1000>>(sensors.timestamp - timeSinceLastSeen).count() > BALL_SEARCH_TIMEOUT_MILLISECONDS) {
+			else if(std::chrono::duration<float, std::ratio<1,1000>>(sensors.timestamp - timeSinceLastSeen).count() > BALL_SEARCH_TIMEOUT_MILLISECONDS) {
 					//do a blind scan'n'pan
 					//XXX: this needs to be a look at sequence rather than a look at point
 					std::vector<LookAtPosition> angles;
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+				// angles.emplace_back(LookAtPosition {-M_PI / 2, -M_PI / 4});
+				// angles.emplace_back(LookAtPosition {0, -M_PI / 4});
+				// angles.emplace_back(LookAtPosition {M_PI / 2, -M_PI / 4});
+				// angles.emplace_back(LookAtPosition {M_PI / 2, 0});
+				// angles.emplace_back(LookAtPosition {0, 0});
+				// angles.emplace_back(LookAtPosition {-M_PI / 2, 0});
+				// angles.emplace_back(LookAtPosition {-M_PI / 2, M_PI / 4});
+				// angles.emplace_back(LookAtPosition {0, M_PI / 4});
+				// angles.emplace_back(LookAtPosition {M_PI / 2, M_PI / 4});
 
-				angles.emplace_back(LookAtPosition {-M_PI / 2, -M_PI / 4});
-				angles.emplace_back(LookAtPosition {0, -M_PI / 4});
-				angles.emplace_back(LookAtPosition {M_PI / 2, -M_PI / 4});
-				angles.emplace_back(LookAtPosition {M_PI / 2, 0});
-				angles.emplace_back(LookAtPosition {0, 0});
-				angles.emplace_back(LookAtPosition {-M_PI / 2, 0});
-				angles.emplace_back(LookAtPosition {-M_PI / 2, M_PI / 4});
-				angles.emplace_back(LookAtPosition {0, M_PI / 4});
-				angles.emplace_back(LookAtPosition {M_PI / 2, M_PI / 4});
+				// angles.emplace_back(LookAtPosition {M_PI / 2, -M_PI / 4});
+				// angles.emplace_back(LookAtPosition {0, -M_PI / 4});
+				// angles.emplace_back(LookAtPosition {-M_PI / 2, -M_PI / 4});
+				// angles.emplace_back(LookAtPosition {-M_PI / 2, 0});
+				// angles.emplace_back(LookAtPosition {0, 0});
+				// angles.emplace_back(LookAtPosition {M_PI / 2, 0});
+				// angles.emplace_back(LookAtPosition {M_PI / 2, M_PI / 4});
+				// angles.emplace_back(LookAtPosition {0, M_PI / 4});
+				// angles.emplace_back(LookAtPosition {-M_PI / 2, M_PI / 4});
+					const double scanYaw = 1.5;
+				const double scanPitch = 0.8;
 
-				angles.emplace_back(LookAtPosition {M_PI / 2, -M_PI / 4});
-				angles.emplace_back(LookAtPosition {0, -M_PI / 4});
-				angles.emplace_back(LookAtPosition {-M_PI / 2, -M_PI / 4});
-				angles.emplace_back(LookAtPosition {-M_PI / 2, 0});
-				angles.emplace_back(LookAtPosition {0, 0});
-				angles.emplace_back(LookAtPosition {M_PI / 2, 0});
-				angles.emplace_back(LookAtPosition {M_PI / 2, M_PI / 4});
-				angles.emplace_back(LookAtPosition {0, M_PI / 4});
-				angles.emplace_back(LookAtPosition {-M_PI / 2, M_PI / 4});
-//					const double scanYaw = 1.5;
-//				const double scanPitch = 0.8;
-//
-//				const size_t panPoints = 4;
-//
-//				for (size_t i = 0; i < panPoints+1; ++i) {
-//					angles.emplace_back(LookAtPosition {i * scanYaw / panPoints - scanYaw / 2.0, -scanPitch * (i % 2) + scanPitch});
-//				}
-//
-//				for (size_t i = 0; i < panPoints+1; ++i) {
-//					angles.emplace_back(LookAtPosition {-(i * scanYaw / panPoints - scanYaw / 2.0), -scanPitch * ((i + 1) % 2) + scanPitch});
-//				}
-//
+				const size_t panPoints = 4;
+
+				for (size_t i = 0; i < panPoints+1; ++i) {
+					angles.emplace_back(LookAtPosition {i * scanYaw / panPoints - scanYaw / 2.0, -scanPitch * (i % 2) + scanPitch});
+				}
+
+				for (size_t i = 0; i < panPoints+1; ++i) {
+					angles.emplace_back(LookAtPosition {-(i * scanYaw / panPoints - scanYaw / 2.0), -scanPitch * ((i + 1) % 2) + scanPitch});
+				}
+
 				emit(std::make_unique<std::vector<LookAtPosition>>(angles));
 				}
 			});
