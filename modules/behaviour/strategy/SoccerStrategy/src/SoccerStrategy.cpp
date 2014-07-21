@@ -248,7 +248,7 @@ namespace strategy {
             }
             // catch (std::exception err) {
             catch (NUClear::metaprogramming::NoDataException err) {
-                log(err.what());
+//                log(err.what());
                 log("Exception! asdflkj");
             }
             catch (std::runtime_error err) {

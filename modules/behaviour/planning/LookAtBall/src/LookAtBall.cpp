@@ -48,27 +48,8 @@ namespace modules {
                     SCAN_PITCH = config["SCAN_PITCH"].as<arma::vec>();
                 });
 
-                on<Trigger<Startup>>([this](const Startup&) {
-					handle.disable();
-                });
-
-		on<Trigger<LookAtBallStart>>([this](const LookAtBallStart&) {
-			if (!handle.enabled()) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-				handle.enable();
-			}
-		});
-
-
-		on<Trigger<LookAtBallStop>>([this](const LookAtBallStop&) {
-			if (handle.enabled()) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-				handle.disable();
-			}
-		});
-
                 //this reaction focuses on the ball - pan'n'scan if not visible and focus on as many objects as possible if visible
-                handle = on<Trigger<std::vector<Ball>>,
+                on<Trigger<std::vector<Ball>>,
                     With<std::vector<Goal>>,
                     With<Optional<messages::localisation::Ball>>,
                     With<Sensors> >([this]
@@ -76,6 +57,8 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                      const std::vector<Goal>& goals,
                      const std::shared_ptr<const messages::localisation::Ball>& ball,
                      const Sensors& sensors) {
+
+			(void)ball;
 
                     if (balls.size() > 0) {
                         timeSinceLastSeen = sensors.timestamp;

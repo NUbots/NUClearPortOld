@@ -61,7 +61,7 @@ namespace modules {
                     screenPadding = file.config["screenPadding"].as<double>();
                 });
 
-                on<Trigger<ExecuteLook>>([this] (const ExecuteLook& e) {
+                on<Trigger<ExecuteLook>>([this] (const ExecuteLook&) {
                     //we are active!
 
                 });

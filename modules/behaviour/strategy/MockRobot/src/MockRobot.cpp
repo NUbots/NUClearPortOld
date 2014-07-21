@@ -22,7 +22,7 @@
 #include "utility/math/angle.h"
 #include "utility/math/matrix.h"
 #include "utility/math/coordinates.h"
-#include "utility/nubugger/NUgraph.h"
+#include "utility/nubugger/NUhelpers.h"
 #include "utility/motion/ForwardKinematics.h"
 #include "utility/localisation/transform.h"
 #include "messages/vision/VisionObjects.h"
@@ -394,6 +394,7 @@ namespace modules {
                     // Timestamp
                     sensors->timestamp = NUClear::clock::now();
 
+                    // Feet sensors.
                     if (cfg_.simulate_robot_picked_up) {
                         sensors->leftFootDown = false;
                         sensors->rightFootDown = false;
@@ -403,6 +404,11 @@ namespace modules {
                         sensors->leftFootDown = true;
                         sensors->rightFootDown = true;
                     }
+
+                    // Odometry
+                    // DOES NOT RUN WHEN UN-COMMENTED.
+//                    sensors->odometryCovariance = arma::eye(2, 2);
+//                    sensors->odometry = {0, 0};
 
                     // orientation
                     arma::vec2 robot_imu_dir_ = WorldToRobotTransform(arma::vec2({0, 0}), robot_heading_, world_imu_direction);
@@ -457,9 +463,9 @@ namespace modules {
                         if (cfg_.observe_left_goal) {
                             messages::vision::Goal goal1;
                             messages::vision::VisionObject::Measurement g1_m;
-                            auto actual_pos_robot_2d = WorldToRobotTransform(robot_pos, robot_heading, goal_l_pos.rows(0, 1));
+                            auto actual_pos_robot_2d = WorldToRobotTransform(robot_position_, robot_heading_, goal_l_pos.rows(0, 1));
                             auto actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), goal_l_pos(2)});
-                            auto screenAngular = calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
+                            auto screenAngular = utility::motion::kinematics::calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
                             g1_m.position = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
                             g1_m.error = arma::eye(3, 3) * 0.1;
 
@@ -494,9 +500,9 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         if (cfg_.observe_right_goal) {
                             messages::vision::Goal goal2;
                             messages::vision::VisionObject::Measurement g2_m;
-                            auto actual_pos_robot_2d = WorldToRobotTransform(robot_pos, robot_heading, goal_r_pos.rows(0, 1));
+                            auto actual_pos_robot_2d = WorldToRobotTransform(robot_position_, robot_heading_, goal_r_pos.rows(0, 1));
                             auto actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), goal_r_pos(2)});
-                            auto screenAngular = calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
+                            auto screenAngular = utility::motion::kinematics::calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
                             g2_m.position = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
                             g2_m.error = arma::eye(3, 3) * 0.1;
 
@@ -542,9 +548,9 @@ std::cerr << "goal size = " << goals->size() << std::endl;
                         messages::vision::VisionObject::Measurement b_m;
                         arma::vec3 ball_pos_3d = {0, 0, field_description_->ball_radius - cfg_.camera_height};
                         ball_pos_3d.rows(0, 1) = ball_position_;
-                        auto actual_pos_robot_2d = WorldToRobotTransform(robot_pos, robot_heading, ball_pos_3d.rows(0, 1));
+                        auto actual_pos_robot_2d = WorldToRobotTransform(robot_position_, robot_heading_, ball_pos_3d.rows(0, 1));
                         auto actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), ball_pos_3d(2)});
-                        auto screenAngular = calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
+                        auto screenAngular = utility::motion::kinematics::calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
                         b_m.position = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
                         b_m.error = arma::eye(3, 3) * 0.1;
 
@@ -602,9 +608,9 @@ std::cerr << "robot_heading_ = " << robot_heading_ << std::endl;
                     messages::localisation::Self self_marker;
                     self_marker.position = robot_position_;
                     self_marker.heading = bearingToUnitVector(robot_heading_);
-                    self_marker.sr_xx = 0.01;
-                    self_marker.sr_xy = 0;
-                    self_marker.sr_yy = 0.01;
+                    self_marker.position_cov(0, 0) = 0.01;
+                    self_marker.position_cov(0, 1) = 0;
+                    self_marker.position_cov(1, 1) = 0.01;
                     robots_msg->push_back(self_marker);
 
 std::cerr << "emit(self); position[0] = " << self_marker.position[0] << " position[1] = " << self_marker.position[1] << std::endl;
@@ -642,27 +648,27 @@ std::cerr << "emit(self); position[0] = " << self_marker.position[0] << " positi
                         messages::localisation::Ball ball_model;
                         ball_model.position = ball_pos;
                         ball_model.velocity = ball_velocity_;
-                        ball_model.sr_xx = ball.sr_xx;
-                        ball_model.sr_xy = ball.sr_xy;
-                        ball_model.sr_yy = ball.sr_yy;
+                        ball_model.position_cov(0, 0) = ball.position_cov(0, 0);
+                        ball_model.position_cov(0, 1) = ball.position_cov(0, 1);
+                        ball_model.position_cov(1, 1) = ball.position_cov(1, 1);
                         ball_model.world_space = true;
                         balls_msg->push_back(ball_model);
 
                         messages::localisation::Ball ball_marker;
                         ball_marker.position = ball_position_;
                         ball_marker.velocity = ball_velocity_;
-                        ball_marker.sr_xx = 0.01;
-                        ball_marker.sr_xy = 0;
-                        ball_marker.sr_yy = 0.01;
+                        ball_marker.position_cov(0, 0) = 0.01;
+                        ball_marker.position_cov(0, 1) = 0;
+                        ball_marker.position_cov(1, 1) = 0.01;
                         ball_marker.world_space = true;
                         balls_msg->push_back(ball_marker);
     
                         messages::localisation::Ball robot_ball;
                         robot_ball.position = robot_ball_pos;
                         robot_ball.velocity = ball_velocity_;
-                        robot_ball.sr_xx = 0.01;
-                        robot_ball.sr_xy = 0;
-                        robot_ball.sr_yy = 0.01;
+                        robot_ball.position_cov(0, 0) = 0.01;
+                        robot_ball.position_cov(0, 1) = 0;
+                        robot_ball.position_cov(1, 1) = 0.01;
                         robot_ball.world_space = true;
                         balls_msg->push_back(robot_ball);
 
@@ -675,9 +681,9 @@ std::cerr << "emit(self); position[0] = " << self_marker.position[0] << " positi
 
                         balls_msg->position = ball_position_;
                         balls_msg->velocity = ball_velocity_;
-                        balls_msg->sr_xx = 0.01;
-                        balls_msg->sr_xy = 0;
-                        balls_msg->sr_yy = 0.01;
+                        balls_msg->position_cov(0, 0) = 0.01;
+                        balls_msg->position_cov(0, 1) = 0;
+                        balls_msg->position_cov(1, 1) = 0.01;
                         balls_msg->world_space = true;
 
 //std::cerr << "emit(std::move(messages::localisation::Ball));" << std::endl;

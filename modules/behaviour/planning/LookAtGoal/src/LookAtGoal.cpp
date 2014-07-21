@@ -48,29 +48,8 @@ namespace modules {
                     SCAN_PITCH = config["SCAN_PITCH"].as<arma::vec>();
                 });
 
-                on<Trigger<Startup>>([this](const Startup&) {
-					handle.disable();
-                });
-
-		on<Trigger<LookAtGoalStart>>([this](const LookAtGoalStart&) {
-			if (!handle.enabled()) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-				handle.enable();
-			}
-		});
-
-
-		on<Trigger<LookAtGoalStop>>([this](const LookAtGoalStop&) {
-			if (handle.enabled()) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-				handle.disable();
-			}
-		});
-
                 //this reaction focuses on the ball - pan'n'scan if not visible and focus on as many objects as possible if visible
-
-                //this reaction focuses on the ball - pan'n'scan if not visible and focus on as many objects as possible if visible
-                handle = on<Trigger<std::vector<Goal>>,
+                on<Trigger<std::vector<Goal>>,
                     With<std::vector<Ball>>,
                     With<Sensors> >([this]
                     (const std::vector<Goal>& goals,

@@ -77,7 +77,7 @@ arma::vec RobotModel::predictedObservation(
 
 //Odometry
 arma::vec RobotModel::predictedObservation(
-    const arma::vec::fixed<RobotModel::size>& state, const Sensors& sensors) {    
+    const arma::vec::fixed<RobotModel::size>& state, const Sensors&) {    
     
     // // Velocity in world space:
     // arma::mat33 imuRotation = zRotationMatrix(state(kImuOffset));
