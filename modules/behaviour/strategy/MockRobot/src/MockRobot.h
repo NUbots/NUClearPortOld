@@ -59,6 +59,7 @@ namespace modules {
                 double headYaw;
                 double headPitch;
                 std::vector<HeadPan> headPans;
+                size_t headPansIndex;
 
                 std::shared_ptr<messages::support::FieldDescription> field_description_;
 

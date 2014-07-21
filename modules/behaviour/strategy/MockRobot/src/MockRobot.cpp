@@ -629,42 +629,52 @@ namespace modules {
                 });
 
                 // Simulate head motion.
-                on<Trigger<Every<1, std::chrono::milliseconds>>>("Mock Head Motion Simulator", [this](const time_t&) {
+                on<Trigger<Every<10, std::chrono::milliseconds>>, Options<Single>>("Mock Head Motion Simulator", [this](const time_t&) {
                         // s = s_0 + vt + a*t*t*0.5
                         // s_0 = current position
-                        // t = time increment (1 ms from the trigger)
+                        // t = time increment (10 ms from the trigger)
                         // v = pan speed
                         // a = 0 (head is moving with a constant velocity)
-                        static size_t currentIndex = 0;
-
-                        if ((headPans.size() > 0) && (currentIndex < headPans.size())) {
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << "headPansIndex - " << headPansIndex << std::endl;
+                        if (!headPans.empty()) {
                             // Stop moving once we reach our target.
-                            if (headYaw != headPans.at(currentIndex).yaw) {
-                                headYaw = headYaw + (headPans.at(currentIndex).speed * 0.001);
+                            if (headYaw < headPans.at(headPansIndex).yaw) {
+                                headYaw = headYaw + (headPans.at(headPansIndex).speed * 0.01);
 
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                                 // Cap movement at target position.
-                                if (headYaw > headPans.at(currentIndex).yaw) {
-                                    headYaw = headPans.at(currentIndex).yaw;
+                                if (headYaw >= headPans.at(headPansIndex).yaw) {
+                                    headYaw = headPans.at(headPansIndex).yaw;
                                 }
                             }
 
-                            if (headPitch != headPans.at(currentIndex).pitch) {
-                                headPitch = headPitch + (headPans.at(currentIndex).speed * 0.001);
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+                            if (headPitch < headPans.at(headPansIndex).pitch) {
+                                headPitch = headPitch + (headPans.at(headPansIndex).speed * 0.01);
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
-                                if (headPitch > headPans.at(currentIndex).pitch) {
-                                    headPitch = headPans.at(currentIndex).pitch;
+                                if (headPitch >= headPans.at(headPansIndex).pitch) {
+                                    headPitch = headPans.at(headPansIndex).pitch;
                                 }
                             }
 
-                            if ((headPitch == headPans.at(currentIndex).pitch) && (headYaw == headPans.at(currentIndex).yaw)) {
-                                currentIndex++;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+                            if ((headPitch == headPans.at(headPansIndex).pitch) && (headYaw == headPans.at(headPansIndex).yaw)) {
+                                headPansIndex++;
 
-                                if (currentIndex == headPans.size()) {
-                                    currentIndex = 0;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+                                if (headPansIndex >= headPans.size()) {
+                                    headPansIndex = 0;
                                     headPans.clear();
                                 }
                             }
                         }
+
+                        else {
+                            headPansIndex = 0;
+                        }
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 });
 
                 on<Trigger<LookAtAngle>>("LookAtAngle catcher", [this](const LookAtAngle& angle) {
