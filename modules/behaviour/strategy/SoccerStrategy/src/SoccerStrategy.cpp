@@ -198,6 +198,8 @@ namespace modules {
 
 			// Check to see if both feet are on the ground.
 			on<Trigger<messages::input::Sensors>>([this](const messages::input::Sensors& sensors) {
+std::cerr << "sensors.leftFootDown = " << ((sensors.leftFootDown) ? "Yes" : "No") << std::endl;
+std::cerr << "sensors.rightFootDown = " << ((sensors.rightFootDown) ? "Yes" : "No") << std::endl;
 				feetOffGround = (!sensors.leftFootDown && !sensors.rightFootDown);
 			});
 
@@ -315,6 +317,7 @@ std::cerr << "currentState.position[1]: " << currentState.position[1] << std::en
 
 					// Have I been picked up?
 					currentState.pickedUp = feetOffGround && !isGettingUp && !isDiving;
+std::cerr << "pickedUp = " << ((currentState.pickedUp) ? "Yes" : "No") << std::endl;
 
 					// Have I been penalised or unpenalised?
 					if (gameState != NULL) { 

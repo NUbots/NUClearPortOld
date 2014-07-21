@@ -17,6 +17,7 @@ ObserveLeftGoal: true
 ObserveRightGoal: true
 DistinguishLeftAndRightGoals: true
 EmitLocalisationBallVector: false
+SimulateRobotPickedUp: false
 
 # Game Controller
 GCFirstHalf: true

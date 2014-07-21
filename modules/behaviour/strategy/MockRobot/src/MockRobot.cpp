@@ -122,6 +122,7 @@ namespace modules {
                 cfg_.observe_right_goal = config["ObserveRightGoal"].as<bool>();
                 cfg_.distinguish_left_and_right_goals = config["DistinguishLeftAndRightGoals"].as<bool>();
                 cfg_.emit_localisation_ball_vector = config["EmitLocalisationBallVector"].as<bool>();
+                cfg_.simulate_robot_picked_up = config["SimulateRobotPickedUp"].as<bool>();
 
                 // Game Controller
                 cfg_.gc_first_half = config["GCFirstHalf"].as<bool>();
@@ -157,7 +158,8 @@ namespace modules {
                 on<Trigger<FieldDescription>>("FieldDescription Update", [this](const FieldDescription& desc) {
 //std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                        field_description_ = std::make_shared<FieldDescription>(desc);
-                       robot_position_ = { -1, 0 };
+                       robot_position_ = { 0, 0 };
+                       robot_heading_ = 0.0;
                 });
 
                 on<Trigger<Configuration<MockStrategyConfig>>>("MockStrategyConfig Update", [this](const Configuration<MockStrategyConfig>& config) {
@@ -393,6 +395,16 @@ namespace modules {
                     // Sensors:
                     auto sensors = std::make_shared<messages::input::Sensors>();
 
+                    if (cfg_.simulate_robot_picked_up) {
+                        sensors->leftFootDown = false;
+                        sensors->rightFootDown = false;
+                    }
+
+                    else {
+                        sensors->leftFootDown = true;
+                        sensors->rightFootDown = true;
+                    }
+
                     // orientation
                     arma::vec2 robot_imu_dir_ = WorldToRobotTransform(arma::vec2({0, 0}), robot_heading_, world_imu_direction);
                     arma::mat orientation = arma::eye(3, 3);
@@ -412,34 +424,40 @@ namespace modules {
 
                         // Only observe goals that are in front of the robot
 //std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                        arma::vec3 goal_l_pos = {0, 0, 0/*field_description_->goalpost_top_height - cfg_.camera_height*/};
-                        arma::vec3 goal_r_pos = {0, 0, 0/*field_description_->goalpost_top_height - cfg_.camera_height*/};
+                        arma::vec3 goal_l_pos = {0, 0, field_description_->goalpost_top_height - cfg_.camera_height};
+                        arma::vec3 goal_r_pos = {0, 0, field_description_->goalpost_top_height - cfg_.camera_height};
 
-                        if (robot_heading_ < -M_PI * 0.5 || robot_heading_ > M_PI * 0.5) {
+                        if (std::fabs(robot_heading_ - headYaw) > (M_PI / 2)) {
                             goal_l_pos.rows(0, 1) = field_description_->goalpost_bl;
                             goal_r_pos.rows(0, 1) = field_description_->goalpost_br;
+std::cerr << "BLUE END" << std::endl;
+std::cerr << "goal_l_pos - (" << goal_l_pos[0] << ", " << goal_l_pos[1] << ")" << std::endl;
+std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" << std::endl;
                         }
 
                         else {
                             goal_l_pos.rows(0, 1) = field_description_->goalpost_yl;
                             goal_r_pos.rows(0, 1) = field_description_->goalpost_yr;
+std::cerr << "YELLOW END" << std::endl;
+std::cerr << "goal_l_pos - (" << goal_l_pos[0] << ", " << goal_l_pos[1] << ")" << std::endl;
+std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" << std::endl;
                         }
 
                         if (cfg_.observe_left_goal) {
                             messages::vision::Goal goal1;
                             messages::vision::VisionObject::Measurement g1_m;
-                            g1_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_r_pos);
+                            g1_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_l_pos);
                             g1_m.error = arma::eye(3, 3) * 0.1;
 
                             // Factor in head yaw and pitch.
-                            g1_m.position[0] -= headYaw;
-                            g1_m.position[1] -= headPitch;
+                            g1_m.position[1] -= headYaw;
+                            g1_m.position[2] -= headPitch;
 
                             goal1.measurements.push_back(g1_m);
                             goal1.measurements.push_back(g1_m);
 
                             if (cfg_.distinguish_left_and_right_goals) {
-                                goal1.side = messages::vision::Goal::Side::RIGHT;
+                                goal1.side = messages::vision::Goal::Side::LEFT;
                             }
                             
                             else {
@@ -449,11 +467,11 @@ namespace modules {
                             goal1.sensors = sensors;
 
                             // Make sure the goal is actually within our field of view.
-                            std::cerr << "left_goal std::fabs(g1_m.position[0]) = " << std::fabs(g1_m.position[0]) << std::endl;
-                            std::cerr << "left_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
                             std::cerr << "left_goal std::fabs(g1_m.position[1]) = " << std::fabs(g1_m.position[1]) << std::endl;
+                            std::cerr << "left_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
+                            std::cerr << "left_goal std::fabs(g1_m.position[2]) = " << std::fabs(g1_m.position[2]) << std::endl;
                             std::cerr << "left_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
-                            if ((std::fabs(g1_m.position[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(g1_m.position[1]) < (cfg_.FOV[1] / 2))) {
+                            if ((std::fabs(g1_m.position[1]) < (cfg_.FOV[0] / 2)) && (std::fabs(g1_m.position[2]) < (cfg_.FOV[1] / 2))) {
                                 goals->push_back(goal1);
                             }
                         }
@@ -461,18 +479,18 @@ namespace modules {
                         if (cfg_.observe_right_goal) {
                             messages::vision::Goal goal2;
                             messages::vision::VisionObject::Measurement g2_m;
-                            g2_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_l_pos);
+                            g2_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_r_pos);
                             g2_m.error = arma::eye(3, 3) * 0.1;
 
                             // Factor in head yaw and pitch.
-                            g2_m.position[0] -= headYaw;
-                            g2_m.position[1] -= headPitch;
+                            g2_m.position[1] -= headYaw;
+                            g2_m.position[2] -= headPitch;
 
                             goal2.measurements.push_back(g2_m);
                             goal2.measurements.push_back(g2_m);
 
                             if (cfg_.distinguish_left_and_right_goals) {
-                                goal2.side = messages::vision::Goal::Side::LEFT;
+                                goal2.side = messages::vision::Goal::Side::RIGHT;
                             }
                             
                             else {
@@ -482,16 +500,16 @@ namespace modules {
                             goal2.sensors = sensors;
 
                             // Make sure the goal is actually within our field of view.
-                            std::cerr << "right_goal std::fabs(g2_m.position[0]) = " << std::fabs(g2_m.position[0]) << std::endl;
-                            std::cerr << "right_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
                             std::cerr << "right_goal std::fabs(g2_m.position[1]) = " << std::fabs(g2_m.position[1]) << std::endl;
+                            std::cerr << "right_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
+                            std::cerr << "right_goal std::fabs(g2_m.position[2]) = " << std::fabs(g2_m.position[2]) << std::endl;
                             std::cerr << "right_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
-                            if ((std::fabs(g2_m.position[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(g2_m.position[1]) < (cfg_.FOV[1] / 2))) {
+                            if ((std::fabs(g2_m.position[1]) < (cfg_.FOV[0] / 2)) && (std::fabs(g2_m.position[2]) < (cfg_.FOV[1] / 2))) {
                                 goals->push_back(goal2);
                             }
                         }
-//std::cerr << "headYaw = " << headYaw << std::endl;
-//std::cerr << "headPitch = " << headPitch << std::endl;
+std::cerr << "headYaw = " << headYaw << std::endl;
+std::cerr << "headPitch = " << headPitch << std::endl;
 //std::cerr << "goal size = " << goals->size() << std::endl;
                         emit(std::move(goals));
 //                        if (goals->size() > 0) {
@@ -511,20 +529,25 @@ namespace modules {
                         b_m.error = arma::eye(3, 3) * 0.1;
 
                         // Factor in head yaw and pitch.
-                        b_m.position[0] -= headYaw;
-                        b_m.position[1] -= headPitch;
+                        b_m.position[1] -= headYaw;
+                        b_m.position[2] -= headPitch;
 
                         ball.measurements.push_back(b_m);
                         ball.sensors = sensors;
 
+                        std::cerr << "ball std::fabs(b_m.position[1]) = " << std::fabs(b_m.position[1]) << std::endl;
+                        std::cerr << "ball (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
+                        std::cerr << "ball std::fabs(b_m.position[2]) = " << std::fabs(b_m.position[2]) << std::endl;
+                        std::cerr << "ball (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
                         // Make sure the ball is actually within our field of view.
-                        if ((std::fabs(b_m.position[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(b_m.position[1]) < (cfg_.FOV[1] / 2))) {
+                        if ((std::fabs(b_m.position[1]) < (cfg_.FOV[0] / 2)) && (std::fabs(b_m.position[2]) < (cfg_.FOV[1] / 2))) {
                             ball_vec->push_back(ball);
                         }
 //std::cerr << "emit(std::move(std::vector<messages::vision::Ball>))" << std::endl;
                         emit(std::move(ball_vec));
                     }
 
+std::cerr << "robot_heading_ = " << robot_heading_ << std::endl;
                     emit(std::make_unique<Sensors>(*sensors));
                 });
 

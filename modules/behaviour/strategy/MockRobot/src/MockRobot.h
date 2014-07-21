@@ -83,6 +83,7 @@ namespace modules {
                     bool observe_right_goal = true;
                     bool distinguish_left_and_right_goals = true;
                     bool emit_localisation_ball_vector = true;
+                    bool simulate_robot_picked_up;
 
                     // Game Controller
                     bool gc_first_half;
