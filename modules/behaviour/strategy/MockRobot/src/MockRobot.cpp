@@ -446,12 +446,11 @@ std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" <
                         if (cfg_.observe_left_goal) {
                             messages::vision::Goal goal1;
                             messages::vision::VisionObject::Measurement g1_m;
-                            g1_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_l_pos);
+                            auto actual_pos_robot_2d = WorldToRobotTransform(robot_pos, robot_heading, goal_l_pos.rows(0, 1));
+                            auto actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), goal_l_pos(2)});
+                            auto screenAngular = calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
+                            g1_m.position = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
                             g1_m.error = arma::eye(3, 3) * 0.1;
-
-                            // Factor in head yaw and pitch.
-                            g1_m.position[1] -= headYaw;
-                            g1_m.position[2] -= headPitch;
 
                             goal1.measurements.push_back(g1_m);
                             goal1.measurements.push_back(g1_m);
@@ -466,12 +465,16 @@ std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" <
 
                             goal1.sensors = sensors;
 
+                            // Factor in head yaw and pitch.
+                            screenAngular[0] -= headYaw;
+                            screenAngular[1] -= headPitch;
+
                             // Make sure the goal is actually within our field of view.
-                            std::cerr << "left_goal std::fabs(g1_m.position[1]) = " << std::fabs(g1_m.position[1]) << std::endl;
+                            std::cerr << "left_goal std::fabs(screenAngular[0]) = " << std::fabs(screenAngular[0]) << std::endl;
                             std::cerr << "left_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
-                            std::cerr << "left_goal std::fabs(g1_m.position[2]) = " << std::fabs(g1_m.position[2]) << std::endl;
+                            std::cerr << "left_goal std::fabs(screenAngular[1]) = " << std::fabs(screenAngular[1]) << std::endl;
                             std::cerr << "left_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
-                            if ((std::fabs(g1_m.position[1]) < (cfg_.FOV[0] / 2)) && (std::fabs(g1_m.position[2]) < (cfg_.FOV[1] / 2))) {
+                            if ((std::fabs(screenAngular[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(screenAngular[1]) < (cfg_.FOV[1] / 2))) {
                                 goals->push_back(goal1);
                             }
                         }
@@ -479,12 +482,11 @@ std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" <
                         if (cfg_.observe_right_goal) {
                             messages::vision::Goal goal2;
                             messages::vision::VisionObject::Measurement g2_m;
-                            g2_m.position = SphericalRobotObservation(robot_position_, robot_heading_, goal_r_pos);
+                            auto actual_pos_robot_2d = WorldToRobotTransform(robot_pos, robot_heading, goal_r_pos.rows(0, 1));
+                            auto actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), goal_r_pos(2)});
+                            auto screenAngular = calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
+                            g2_m.position = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
                             g2_m.error = arma::eye(3, 3) * 0.1;
-
-                            // Factor in head yaw and pitch.
-                            g2_m.position[1] -= headYaw;
-                            g2_m.position[2] -= headPitch;
 
                             goal2.measurements.push_back(g2_m);
                             goal2.measurements.push_back(g2_m);
@@ -499,12 +501,16 @@ std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" <
 
                             goal2.sensors = sensors;
 
+                            // Factor in head yaw and pitch.
+                            screenAngular[0] -= headYaw;
+                            screenAngular[1] -= headPitch;
+
                             // Make sure the goal is actually within our field of view.
-                            std::cerr << "right_goal std::fabs(g2_m.position[1]) = " << std::fabs(g2_m.position[1]) << std::endl;
-                            std::cerr << "right_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
-                            std::cerr << "right_goal std::fabs(g2_m.position[2]) = " << std::fabs(g2_m.position[2]) << std::endl;
-                            std::cerr << "right_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
-                            if ((std::fabs(g2_m.position[1]) < (cfg_.FOV[0] / 2)) && (std::fabs(g2_m.position[2]) < (cfg_.FOV[1] / 2))) {
+                            std::cerr << "left_goal std::fabs(screenAngular[0]) = " << std::fabs(screenAngular[0]) << std::endl;
+                            std::cerr << "left_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
+                            std::cerr << "left_goal std::fabs(screenAngular[1]) = " << std::fabs(screenAngular[1]) << std::endl;
+                            std::cerr << "left_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
+                            if ((std::fabs(screenAngular[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(screenAngular[1]) < (cfg_.FOV[1] / 2))) {
                                 goals->push_back(goal2);
                             }
                         }
@@ -525,22 +531,25 @@ std::cerr << "headPitch = " << headPitch << std::endl;
                         messages::vision::VisionObject::Measurement b_m;
                         arma::vec3 ball_pos_3d = {0, 0, field_description_->ball_radius - cfg_.camera_height};
                         ball_pos_3d.rows(0, 1) = ball_position_;
-                        b_m.position = SphericalRobotObservation(robot_position_, robot_heading_, ball_pos_3d);
+                        auto actual_pos_robot_2d = WorldToRobotTransform(robot_pos, robot_heading, ball_pos_3d.rows(0, 1));
+                        auto actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), ball_pos_3d(2)});
+                        auto screenAngular = calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
+                        b_m.position = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
                         b_m.error = arma::eye(3, 3) * 0.1;
-
-                        // Factor in head yaw and pitch.
-                        b_m.position[1] -= headYaw;
-                        b_m.position[2] -= headPitch;
 
                         ball.measurements.push_back(b_m);
                         ball.sensors = sensors;
 
-                        std::cerr << "ball std::fabs(b_m.position[1]) = " << std::fabs(b_m.position[1]) << std::endl;
-                        std::cerr << "ball (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
-                        std::cerr << "ball std::fabs(b_m.position[2]) = " << std::fabs(b_m.position[2]) << std::endl;
-                        std::cerr << "ball (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
-                        // Make sure the ball is actually within our field of view.
-                        if ((std::fabs(b_m.position[1]) < (cfg_.FOV[0] / 2)) && (std::fabs(b_m.position[2]) < (cfg_.FOV[1] / 2))) {
+                        // Factor in head yaw and pitch.
+                        screenAngular[0] -= headYaw;
+                        screenAngular[1] -= headPitch;
+
+                        // Make sure the goal is actually within our field of view.
+                        std::cerr << "left_goal std::fabs(screenAngular[0]) = " << std::fabs(screenAngular[0]) << std::endl;
+                        std::cerr << "left_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
+                        std::cerr << "left_goal std::fabs(screenAngular[1]) = " << std::fabs(screenAngular[1]) << std::endl;
+                        std::cerr << "left_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
+                        if ((std::fabs(screenAngular[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(screenAngular[1]) < (cfg_.FOV[1] / 2))) {
                             ball_vec->push_back(ball);
                         }
 //std::cerr << "emit(std::move(std::vector<messages::vision::Ball>))" << std::endl;
