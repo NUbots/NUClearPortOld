@@ -50,19 +50,16 @@ namespace modules {
                 // arma::vec odom_old_robot_heading_ = { 1, 0 };
                 double odom_old_robot_heading_ = 0;
 
-//                typedef struct {
-//                    double speed;
-//                    double yaw;
-//                    double pitch;
-//                } HeadPan;
+                typedef struct {
+                    arma::vec2 velocity;
+                    arma::vec2 angle;
+                } HeadPan;
 
-//                double headYaw;
-//                double headPitch;
                 bool saccading;
                 arma::vec2 headAngle;
                 arma::vec2 targetHeadAngle;
                 arma::vec2 headVelocity;
-                std::vector<arma::vec2> headPans;
+                std::vector<HeadPan> headPans;
                 size_t headPansIndex;
 
                 std::shared_ptr<messages::support::FieldDescription> field_description_;

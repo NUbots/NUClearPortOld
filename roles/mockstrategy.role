@@ -21,8 +21,8 @@ ADD_ROLE(
 #        behaviour::skills::Getup
 #        behaviour::skills::Look
 #        behaviour::skills::KickScript
-#        behaviour::planning::LookAtBall
-#        behaviour::planning::LookAtGoal
+        behaviour::planning::LookAtBall
+        behaviour::planning::LookAtGoal
         behaviour::planning::LookPlanner
         behaviour::planning::KickPlanner
         behaviour::planning::DivePlanner

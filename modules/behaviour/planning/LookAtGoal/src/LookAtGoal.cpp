@@ -57,6 +57,7 @@ namespace planning {
             (const std::vector<Goal>& goals,
              const std::vector<Ball>& balls,
              const Sensors& sensors) {
+
             if (goals.size() > 0) {
                 std::cout<<__FILE__<<" "<<__LINE__<<": "<<__func__<<std::endl;
                 timeSinceLastSeen = sensors.timestamp;

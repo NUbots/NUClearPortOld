@@ -105,7 +105,7 @@ namespace modules {
             }
 
             void MockRobot::UpdateConfiguration(const messages::support::Configuration<MockStrategyConfig>& config) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 cfg_.simulate_vision = config["SimulateVision"].as<bool>();
                 cfg_.simulate_goal_observations = config["SimulateGoalObservations"].as<bool>();
                 cfg_.simulate_ball_observations = config["SimulateBallObservations"].as<bool>();
@@ -163,7 +163,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 : Reactor(std::move(environment)) {
 
                 on<Trigger<FieldDescription>>("FieldDescription Update", [this](const FieldDescription& desc) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                        field_description_ = std::make_shared<FieldDescription>(desc);
                        robot_position_ = { -field_description_->dimensions.field_length / 4, -field_description_->dimensions.field_width / 2 };
                        robot_heading_ = M_PI / 2;
@@ -173,19 +173,19 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 });
 
                 on<Trigger<Configuration<MockStrategyConfig>>>("MockStrategyConfig Update", [this](const Configuration<MockStrategyConfig>& config) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     UpdateConfiguration(config);
                 });
 
                 // Update robot position
                 on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Robot motion", [this](const time_t&) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_robot_movement) {
                         //robot_velocity_ = { 0, 0 };
                         return;
                     }
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     auto t = absolute_time();
                     double period = cfg_.robot_movement_path_period;
                     double x_amp = 3;
@@ -193,20 +193,20 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     arma::vec old_pos = robot_position_;
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     auto wave1 = triangle_wave(t, period);
                     auto wave2 = triangle_wave(t + (period / 4.0), period);
                     // auto wave1 = sine_wave(t, period);
                     // auto wave2 = sine_wave(t + (period / 4.0), period);
                     robot_position_ = { wave1 * x_amp, wave2 * y_amp };
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     arma::vec diff = robot_position_ - old_pos;
 
                     robot_heading_ = vectorToBearing(diff);
                     robot_velocity_ = robot_heading_ / 100.0;
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     double imu_period = cfg_.robot_imu_drift_period;
                     world_imu_direction = { std::cos(2 * M_PI * t / imu_period), std::sin(2 * M_PI * t / imu_period) };
@@ -214,7 +214,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                 // Simulate robot walking
                 on<Trigger<Every<10, std::chrono::milliseconds>>, With<Optional<messages::motion::WalkCommand>>, Options<Sync<MockRobot>>>("Mock Robot walking", [this](const time_t&, const std::shared_ptr<const messages::motion::WalkCommand>& walk) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_robot_walking) {
                         return;
                     }
@@ -223,7 +223,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     // Update position
                     if (walk != NULL) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         robot_position_[0] += (walk->velocity[0]*cos(robot_heading_) - walk->velocity[1]*sin(robot_heading_)) * 0.015;
                         robot_position_[1] += (walk->velocity[0]*sin(robot_heading_) + walk->velocity[1]*cos(robot_heading_)) * 0.015;
                         robot_heading_ += (walk->rotationalSpeed) * 0.1;
@@ -235,7 +235,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                 // Simulate game controller
                 on<Trigger<Every<100, std::chrono::milliseconds>>>("Mock Game Controller", [this](const time_t&) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_game_controller) {
                         return;
                     }
@@ -322,10 +322,10 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             break;
                     }
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     emit(std::make_unique<Phase>(gameState->phase));
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (gameState->team.players.at(0).penaltyReason == PenaltyReason::UNPENALISED) {
                         emit(std::make_unique<Unpenalisation<SELF>>(Unpenalisation<SELF>{0}));
                     }
@@ -335,12 +335,12 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     }
 
                     emit(std::move(gameState));
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 });
 
                 // Update ball position
                 on<Trigger<Every<10, std::chrono::milliseconds>>>("Mock Ball Motion", [this](const time_t&) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     if (!cfg_.simulate_ball_movement) {
                         ball_velocity_ = { 0, 0 };
                         return;
@@ -405,7 +405,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         NUClear::log(__FILE__, __LINE__, ": field_description_ == nullptr");
                         return;
                     }
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     // Sensors:
                     auto sensors = std::make_shared<messages::input::Sensors>();
@@ -444,13 +444,18 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // forwardKinematics
                     sensors->forwardKinematics[ServoID::HEAD_PITCH] = arma::eye(4, 4);
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Goal observation
                     if (cfg_.simulate_goal_observations) {
                         auto goals = std::make_unique<std::vector<messages::vision::Goal>>();
 
                         // Only observe goals that are in front of the robot
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+std::cerr << "robot_position_ = (" << robot_position_[0] << ", " << robot_position_[1] << ")" << std::endl;
+std::cerr << "robot_heading_ = " << robot_heading_ << std::endl;
+std::cerr << "headAngle = (" << headAngle[0] << ", " << headAngle[1] << ")" <<std::endl;
+std::cerr << "goalThreshold = " << cfg_.goal_threshold << std::endl;
+
                         arma::vec3 goal_l_pos = {0, 0, field_description_->goalpost_top_height - cfg_.camera_height};
                         arma::vec3 goal_r_pos = {0, 0, field_description_->goalpost_top_height - cfg_.camera_height};
 
@@ -461,30 +466,35 @@ std::cerr << "BLUE END" << std::endl;
 std::cerr << "goal_l_pos - (" << goal_l_pos[0] << ", " << goal_l_pos[1] << ")" << std::endl;
 std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" << std::endl;
                         }
-                        else if (std::fabs(robot_heading_ - headAngle[0]) < ((M_PI + cfg_.goal_threshold) / 2)) {
+                        else if (std::fabs(robot_heading_ - headAngle[0]) < ((M_PI - cfg_.goal_threshold) / 2)) {
                             goal_l_pos.rows(0, 1) = field_description_->goalpost_yl;
                             goal_r_pos.rows(0, 1) = field_description_->goalpost_yr;
+std::cerr << "YELLOW END" << std::endl;
+std::cerr << "goal_l_pos - (" << goal_l_pos[0] << ", " << goal_l_pos[1] << ")" << std::endl;
+std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" << std::endl;
                         }
                         else {
                             if(robot_position_[0] <= 0) {
                                 goal_l_pos.rows(0, 1) = field_description_->goalpost_bl;
                                 goal_r_pos.rows(0, 1) = field_description_->goalpost_br;
+std::cerr << "BLUE END" << std::endl;
+std::cerr << "goal_l_pos - (" << goal_l_pos[0] << ", " << goal_l_pos[1] << ")" << std::endl;
+std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" << std::endl;
                             }
                             else {
                                 goal_l_pos.rows(0, 1) = field_description_->goalpost_yl;
                                 goal_r_pos.rows(0, 1) = field_description_->goalpost_yr;
-                            }
 std::cerr << "YELLOW END" << std::endl;
 std::cerr << "goal_l_pos - (" << goal_l_pos[0] << ", " << goal_l_pos[1] << ")" << std::endl;
 std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" << std::endl;
+                            }
                         }
 
                         if (cfg_.observe_left_goal) {
                             messages::vision::Goal goal1;
                             messages::vision::VisionObject::Measurement g1_m;
-                            auto actual_pos_robot_2d = WorldToRobotTransform(robot_position_, robot_heading_, goal_l_pos.rows(0, 1));
-                            auto actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), goal_l_pos(2)});
-                            auto screenAngular = utility::motion::kinematics::calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
+                            arma::vec2 actual_pos_robot_2d = WorldToRobotTransform(robot_position_, robot_heading_, goal_l_pos.rows(0, 1));
+                            arma::vec3 actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), goal_l_pos(2)});
                             g1_m.position = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
                             g1_m.error = arma::eye(3, 3) * 0.1;
 
@@ -502,6 +512,7 @@ std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" <
                             goal1.sensors = sensors;
 
                             // Factor in head yaw and pitch.
+                            arma::vec2 screenAngular = utility::motion::kinematics::calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
                             screenAngular[0] -= headAngle[0];
                             screenAngular[1] -= headAngle[1];
 
@@ -511,18 +522,17 @@ std::cerr << "goal_r_pos - (" << goal_r_pos[0] << ", " << goal_r_pos[1] << ")" <
                             std::cerr << "left_goal std::fabs(screenAngular[1]) = " << std::fabs(screenAngular[1]) << std::endl;
                             std::cerr << "left_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
                             if ((std::fabs(screenAngular[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(screenAngular[1]) < (cfg_.FOV[1] / 2))) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                                 goals->push_back(goal1);
                             }
                         }
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         if (cfg_.observe_right_goal) {
                             messages::vision::Goal goal2;
                             messages::vision::VisionObject::Measurement g2_m;
-                            auto actual_pos_robot_2d = WorldToRobotTransform(robot_position_, robot_heading_, goal_r_pos.rows(0, 1));
-                            auto actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), goal_r_pos(2)});
-                            auto screenAngular = utility::motion::kinematics::calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
+                            arma::vec2 actual_pos_robot_2d = WorldToRobotTransform(robot_position_, robot_heading_, goal_r_pos.rows(0, 1));
+                            arma::vec3 actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), goal_r_pos(2)});
                             g2_m.position = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
                             g2_m.error = arma::eye(3, 3) * 0.1;
 
@@ -540,16 +550,18 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                             goal2.sensors = sensors;
 
                             // Factor in head yaw and pitch.
+                            arma::vec2 screenAngular = utility::motion::kinematics::calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
+
                             screenAngular[0] -= headAngle[0];
                             screenAngular[1] -= headAngle[1];
 
                             // Make sure the goal is actually within our field of view.
-                            std::cerr << "left_goal std::fabs(screenAngular[0]) = " << std::fabs(screenAngular[0]) << std::endl;
-                            std::cerr << "left_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
-                            std::cerr << "left_goal std::fabs(screenAngular[1]) = " << std::fabs(screenAngular[1]) << std::endl;
-                            std::cerr << "left_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
+                            std::cerr << "right_goal std::fabs(screenAngular[0]) = " << std::fabs(screenAngular[0]) << std::endl;
+                            std::cerr << "right_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
+                            std::cerr << "right_goal std::fabs(screenAngular[1]) = " << std::fabs(screenAngular[1]) << std::endl;
+                            std::cerr << "right_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
                             if ((std::fabs(screenAngular[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(screenAngular[1]) < (cfg_.FOV[1] / 2))) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                                 goals->push_back(goal2);
                             }
                         }
@@ -560,18 +572,17 @@ std::cerr << "goal size = " << goals->size() << std::endl;
 //                        }
                     }
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Ball observation
                     if (cfg_.simulate_ball_observations) {
                         auto ball_vec = std::make_unique<std::vector<messages::vision::Ball>>();
 
+std::cerr << "ball_position_ = (" << ball_position_[0] << ", " << ball_position_[1] << ")" << std::endl;
                         messages::vision::Ball ball;
                         messages::vision::VisionObject::Measurement b_m;
-                        arma::vec3 ball_pos_3d = {0, 0, field_description_->ball_radius - cfg_.camera_height};
-                        ball_pos_3d.rows(0, 1) = ball_position_;
-                        auto actual_pos_robot_2d = WorldToRobotTransform(robot_position_, robot_heading_, ball_pos_3d.rows(0, 1));
-                        auto actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), ball_pos_3d(2)});
-                        auto screenAngular = utility::motion::kinematics::calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
+                        arma::vec3 ball_pos_3d = {ball_position_[0], ball_position_[1], field_description_->ball_radius - cfg_.camera_height};
+                        arma::vec2 actual_pos_robot_2d = WorldToRobotTransform(robot_position_, robot_heading_, ball_pos_3d.rows(0, 1));
+                        arma::vec3 actual_pos_robot_3d = arma::vec3({actual_pos_robot_2d(0), actual_pos_robot_2d(1), ball_pos_3d(2)});
                         b_m.position = utility::math::coordinates::cartesianToSpherical(actual_pos_robot_3d);
                         b_m.error = arma::eye(3, 3) * 0.1;
 
@@ -579,29 +590,29 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         ball.sensors = sensors;
 
                         // Factor in head yaw and pitch.
+                        arma::vec2 screenAngular = utility::motion::kinematics::calculateHeadJointsToLookAt(actual_pos_robot_3d, sensors->orientationCamToGround, sensors->orientationBodyToGround);
                         screenAngular[0] -= headAngle[0];
                         screenAngular[1] -= headAngle[1];
 
                         // Make sure the goal is actually within our field of view.
-                        std::cerr << "left_goal std::fabs(screenAngular[0]) = " << std::fabs(screenAngular[0]) << std::endl;
-                        std::cerr << "left_goal (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
-                        std::cerr << "left_goal std::fabs(screenAngular[1]) = " << std::fabs(screenAngular[1]) << std::endl;
-                        std::cerr << "left_goal (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
+                        std::cerr << "ball std::fabs(screenAngular[0]) = " << std::fabs(screenAngular[0]) << std::endl;
+                        std::cerr << "ball (cfg_.FOV[0] / 2) = " << (cfg_.FOV[0] / 2) << std::endl;
+                        std::cerr << "ball std::fabs(screenAngular[1]) = " << std::fabs(screenAngular[1]) << std::endl;
+                        std::cerr << "ball (cfg_.FOV[1] / 2) = " << (cfg_.FOV[1] / 2) << std::endl;
                         if ((std::fabs(screenAngular[0]) < (cfg_.FOV[0] / 2)) && (std::fabs(screenAngular[1]) < (cfg_.FOV[1] / 2))) {
                             ball_vec->push_back(ball);
                         }
-std::cerr << "emit(std::move(std::vector<messages::vision::Ball>))" << std::endl;
+//std::cerr << "emit(std::move(std::vector<messages::vision::Ball>))" << std::endl;
 std::cerr << "ball_vec size = " << ball_vec->size() << std::endl;
                         emit(std::move(ball_vec));
                     }
 
-std::cerr << "robot_heading_ = " << robot_heading_ << std::endl;
                     emit(std::make_unique<Sensors>(*sensors));
                 });
 
                 // Emit robot to NUbugger
                 on<Trigger<Every<100, std::chrono::milliseconds>>, With<Mock<std::vector<messages::localisation::Self>>>, Options<Sync<MockRobot>>>("NUbugger Output", [this](const time_t&, const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     auto& robots = mock_robots.data;
 
                     emit(graph("Actual robot position", robot_position_[0], robot_position_[1]));
@@ -641,7 +652,7 @@ std::cerr << "emit(self); position[0] = " << self_marker.position[0] << " positi
                 // Emit ball to Nubugger
                 on<Trigger<Every<100, std::chrono::milliseconds>>, With<Mock<messages::localisation::Ball>>, With<Mock<std::vector<messages::localisation::Self>>>, Options<Sync<MockRobot>>>(
                                 "NUbugger Output", [this](const time_t&, const Mock<messages::localisation::Ball>& mock_ball, const Mock<std::vector<messages::localisation::Self>>& mock_robots) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     auto& ball = mock_ball.data;
                     auto& robots = mock_robots.data;
 
@@ -713,7 +724,7 @@ std::cerr << "emit(std::move(messages::localisation::Ball));" << std::endl;
                 });
 
                 // Simulate head motion.
-                on<Trigger<Every<10, std::chrono::milliseconds>>, Options<Single, Sync<MockRobot>>>("Mock Head Motion Simulator", [this](const time_t&) {
+                on<Trigger<Every<10, std::chrono::milliseconds>>, Options<Single>>("Mock Head Motion Simulator", [this](const time_t&) {
                         // s = s_0 + vt + a*t*t*0.5
                         // s_0 = current position
                         // t = time increment (10 ms from the trigger)
@@ -721,30 +732,51 @@ std::cerr << "emit(std::move(messages::localisation::Ball));" << std::endl;
                         // a = 0 (head is moving with a constant velocity)
                         
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                        // Stop moving once we reach our target.
-                        if (headAngle[0] <= std::fabs(targetHeadAngle[0])) {
-                            headAngle[0] += headVelocity[0] * 0.01;
+std::cerr << "headPansIndex = " << headPansIndex << std::endl;
+std::cerr << "headPans.size = " << headPans.size() << std::endl;
 
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                            // Cap movement at target position.
-                            if (headAngle[0] > std::fabs(targetHeadAngle[0])) {
-                                headAngle[0] = targetHeadAngle[0];
+                        if (!headPans.empty()) {
+                            targetHeadAngle = headPans.at(headPansIndex).angle;
+                            headVelocity = headPans.at(headPansIndex).velocity;
+
+std::cerr << "headVelocity = (" << headVelocity[0] << ", " << headVelocity[1] << ")" << std::endl;
+
+                            // Stop moving once we reach our target.
+                            if (headAngle[0] <= std::fabs(targetHeadAngle[0])) {
+                                headAngle[0] += headVelocity[0] * 0.01;
+
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+                                // Cap movement at target position.
+                                if (headAngle[0] > std::fabs(targetHeadAngle[0])) {
+                                    headAngle[0] = targetHeadAngle[0];
+                                }
                             }
-                        }
 
 std::cerr << "headAngle[0] - " << headAngle[0] << std::endl;
 std::cerr << "targetHeadYaw - " << targetHeadAngle[0] << std::endl;
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
-                        // Stop moving once we reach our target.
-                        if (headAngle[1] <= std::fabs(targetHeadAngle[1])) {
-                            headAngle[1] += headVelocity[1] * 0.01;
+                            // Stop moving once we reach our target.
+                            if (headAngle[1] <= std::fabs(targetHeadAngle[1])) {
+                                headAngle[1] += headVelocity[1] * 0.01;
 
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                            // Cap movement at target position.
-                            if (headAngle[1] > std::fabs(targetHeadAngle[1])) {
-                                headAngle[1] = targetHeadAngle[1];
+                                // Cap movement at target position.
+                                if (headAngle[1] > std::fabs(targetHeadAngle[1])) {
+                                    headAngle[1] = targetHeadAngle[1];
+                                }
                             }
+
+                            if ((headAngle[0] == targetHeadAngle[0]) && (headAngle[1] == targetHeadAngle[1])) {
+                                if ((++headPansIndex) >= headPans.size()) {
+                                    headPansIndex = 0;
+                                    headPans.clear();
+                                }
+                            }
+                        }
+
+                        else {
+                            headPansIndex = 0;
                         }
 
 std::cerr << "headAngle[1] - " << headAngle[1] << std::endl;
@@ -753,29 +785,25 @@ std::cerr << "targetHeadPitch - " << targetHeadAngle[1] << std::endl;
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 });
 
-/*
                 on<Trigger<LookAtAngle>>("LookAtAngle catcher", [this](const LookAtAngle& angle) {
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Select the pan speed to use.
                     double speed = (sqrt((angle.pitch * angle.pitch) + (angle.yaw * angle.yaw)) < cfg_.distance_threshold) ? cfg_.slow_speed : cfg_.fast_speed;
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Calculate the target yaw and pitch.
                     double yaw = std::fmin(std::fmax(angle.yaw + headAngle[0], cfg_.min_yaw), cfg_.max_yaw);
                     double pitch = std::fmin(std::fmax(angle.pitch + headAngle[1], cfg_.min_pitch), cfg_.max_pitch);
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                    headPans.emplace_back(HeadPan {speed, yaw, pitch});
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+                    headPans.emplace_back(HeadPan {{speed, speed}, {yaw, pitch}});
                 });
 
                 on<Trigger<std::vector<LookAtAngle>>>("LookAtAngles catcher", [this](const std::vector<LookAtAngle>& angles) {
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     double pitchLow = 0.0, pitchHigh = 0.0, yawLeft = 0.0, yawRight = 0.0;
                     double offset = cfg_.screen_padding;
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Loop through and get the yaw/pitch bounds.
                     for (const auto& angle : angles) {
-std::cerr << "angle.pitch = " << angle.pitch << std::endl;
-std::cerr << "angle.yaw = " << angle.yaw << std::endl;
                         pitchLow = fmin(pitchLow, angle.pitch - offset);
                         pitchHigh = fmax(pitchHigh, angle.pitch + offset);
 
@@ -794,11 +822,8 @@ std::cerr << "angle.yaw = " << angle.yaw << std::endl;
                     // Calculate the target yaw and pitch.
                     double yaw = std::fmin(std::fmax(avgYaw + headAngle[0], cfg_.min_yaw), cfg_.max_yaw);
                     double pitch = std::fmin(std::fmax(avgPitch + headAngle[1], cfg_.min_pitch), cfg_.max_pitch);
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                    headPans.emplace_back(HeadPan {speed, yaw, pitch});
-std::cerr << "headPans.size = " << headPans.size() << std::endl;                        
-std::cerr << "headPans[0].yaw = " << headPans[0].yaw << std::endl;                        
-std::cerr << "headPans[0].pitch = " << headPans[0].pitch << std::endl;                        
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+                    headPans.emplace_back(HeadPan {{speed, speed}, {yaw, pitch}});
                 });
 
                 on<Trigger<LookAtPosition>>("LookAtPosition catcher", [this](const LookAtPosition& position) {
@@ -809,8 +834,8 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Calculate the target yaw and pitch.
                     double yaw = std::fmin(std::fmax(position.yaw + headAngle[0], cfg_.min_yaw), cfg_.max_yaw);
                     double pitch = std::fmin(std::fmax(position.pitch + headAngle[1], cfg_.min_pitch), cfg_.max_pitch);
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                    headPans.emplace_back(HeadPan {speed, yaw, pitch});
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+                    headPans.emplace_back(HeadPan {{speed, speed}, {yaw, pitch}});
                 });
 
                 on<Trigger<std::vector<LookAtPosition>>>("LookAtPositions catcher", [this](const std::vector<LookAtPosition>& positions) {
@@ -818,7 +843,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     double currentYaw = headAngle[0];
                     double currentPitch = headAngle[1];
                     std::vector<LookAtPosition> nonConstPositions;
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     // Make a sortable vector.
                     for (auto& position : positions) {
                         nonConstPositions.emplace_back(position);
@@ -838,31 +863,38 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     // Do the pan.
                     double speed = cfg_.slow_speed;
-std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     for (auto& position : nonConstPositions) {
-                        headPans.emplace_back(HeadPan {speed, position.yaw, position.pitch});
+                        headPans.emplace_back(HeadPan {{speed, speed}, {position.yaw, position.pitch}});
                         speed = cfg_.fast_speed;
                     }
                 });
-*/
 
+                on<Trigger<Look::PanSelection>>([this](const Look::PanSelection& panSelection) {
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+std::cerr << ((panSelection.lookAtGoalInsteadOfBall) ? "Look at goals" : "Look at ball") << std::endl;
+                    headPans.clear();
+                    headPansIndex = 0;
+                });
+
+/*
                 on<Trigger<Every<30, Per<std::chrono::seconds>>>, Options<Sync<MockRobot>>>("Mock Look Planner", [this](const time_t&) {
 
-std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     arma::vec2 lastVelocity = headVelocity;
 
-std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     arma::vec2 lastPosition = headAngle;
 
-std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     arma::vec2 targetPoint;
 
                     //update appropriately for the current movement
                     if (headPans.size() == 1) {
                         //clip the head angles
                         targetPoint = arma::vec2({ std::fmin(std::fmax(headPans[0][0], cfg_.min_yaw), cfg_.max_yaw), std::fmin(std::fmax(headPans[0][1], cfg_.min_pitch), cfg_.max_pitch)});
-std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     }
                     
                     else if (headPans.size() > 0 and saccading) { //do saccades
@@ -870,7 +902,7 @@ std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
                     }
                     
                     else if (headPans.size() > 0 and not saccading) { //do pans
-std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                         size_t currentSelection = headPans.size() - 1;
                         double currentGoodness = arma::norm(lastPosition - headPans.back()) + arma::dot(lastVelocity, headPans.front() - headPans.back());
@@ -884,11 +916,11 @@ std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
                             }
                         }
 
-std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                         targetPoint = headPans.at((currentSelection + 1) % headPans.size());
                     }
 
-std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     //get the approximate distance of movement
                     const double panDist = arma::norm(targetPoint - lastPosition) + std::numeric_limits<double>::epsilon();
@@ -899,8 +931,9 @@ std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
                     headVelocity = {panSpeed, panSpeed};
                     targetHeadAngle = targetPoint;
 
-std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 });
+*/
 
                 on<Trigger<std::vector<Look::Pan>>, Options<Sync<MockRobot>>>("Mock Pan", [this](const std::vector<Look::Pan>& pan) {
                     //copy the pan into the headPans
@@ -908,10 +941,14 @@ std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
                     saccading = false;
                     headPans.clear();
 
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+                    std::vector<LookAtPosition> angles;
+
                     for (size_t i = 0; i < pan.size(); ++i) {
-                        headPans.push_back(pan[i].angle);
-//std::cout << __FILE__ << "," << __LINE__ << ", " << pan[i].angle << std::endl;
+                        angles.emplace_back(LookAtPosition {pan[i].angle[0], pan[i].angle[1]});
                     }
+
+                    emit(std::make_unique<std::vector<LookAtPosition>>(angles));
                 });
                     
                 on<Trigger<std::vector<Look::Fixation>>, Options<Sync<MockRobot>>>("Mock Fixation", [this](const std::vector<Look::Fixation>& fixations) {
@@ -919,6 +956,7 @@ std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
                     //start with the most permissive settings possible and add items incrementally
                     arma::vec2 angleMin = fixations[0].angle - cfg_.FOV + cfg_.screen_padding;
                     arma::vec2 angleMax = fixations[0].angle + cfg_.FOV - cfg_.screen_padding;
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
 
                     for (size_t i = 1; i < fixations.size(); ++i) {
                         if (fixations[i].angle[0] > angleMin[0] and
@@ -935,10 +973,10 @@ std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
                         }
                     }
 
+std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     //get the centre of the current focus
-                    headPans.clear();
-                    headPans.push_back((angleMin + angleMax) * 0.5);
-
+                    arma::vec2 angle = (angleMin + angleMax) * 0.5;
+                    emit(std::make_unique<LookAtPosition>(LookAtPosition {angle[0], angle[1]}));
                 });
 
                 // Give the ball velocity when it is kicked
