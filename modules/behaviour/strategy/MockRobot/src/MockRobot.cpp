@@ -323,7 +323,6 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     }
 
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
-                    emit(std::move(gameState));
                     emit(std::make_unique<Phase>(gameState->phase));
 
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
@@ -334,6 +333,8 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                     else {
                         emit(std::make_unique<Penalisation<SELF>>(Penalisation<SELF>{0, NUClear::clock::now(), gameState->team.players.at(0).penaltyReason}));
                     }
+
+                    emit(std::move(gameState));
 std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 });
 
@@ -845,7 +846,7 @@ std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
                 });
 */
 
-                on<Trigger<Every<30, Per<std::chrono::seconds>>>, Options<Sync<MockRobot>>>([this](const time_t&) {
+                on<Trigger<Every<30, Per<std::chrono::seconds>>>, Options<Sync<MockRobot>>>("Mock Look Planner", [this](const time_t&) {
 
 std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
 
@@ -884,7 +885,7 @@ std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
                         }
 
 std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
-                        targetPoint = (currentSelection + 1) % headPans.size();
+                        targetPoint = headPans.at((currentSelection + 1) % headPans.size());
                     }
 
 std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
@@ -901,7 +902,7 @@ std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
 std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
                 });
 
-                on<Trigger<std::vector<Look::Pan>>, Options<Sync<MockRobot>>>([this](const std::vector<Look::Pan>& pan) {
+                on<Trigger<std::vector<Look::Pan>>, Options<Sync<MockRobot>>>("Mock Pan", [this](const std::vector<Look::Pan>& pan) {
                     //copy the pan into the headPans
                     //XXX: actually we can simplify this a lot later on using angular sizes
                     saccading = false;
@@ -913,8 +914,7 @@ std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
                     }
                 });
                     
-                on<Trigger<std::vector<Look::Fixation>>,
-                   Options<Sync<MockRobot>>>([this](const std::vector<Look::Fixation>& fixations) {
+                on<Trigger<std::vector<Look::Fixation>>, Options<Sync<MockRobot>>>("Mock Fixation", [this](const std::vector<Look::Fixation>& fixations) {
 
                     //start with the most permissive settings possible and add items incrementally
                     arma::vec2 angleMin = fixations[0].angle - cfg_.FOV + cfg_.screen_padding;
