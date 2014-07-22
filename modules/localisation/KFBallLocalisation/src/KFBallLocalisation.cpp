@@ -68,10 +68,10 @@ namespace localisation {
 
             arma::mat22 imu_to_robot = sensors.robotToIMU.t();
             arma::vec2 robot_space_ball_pos = imu_to_robot * model_state.rows(0, 1);
+            arma::vec2 robot_space_ball_vel = imu_to_robot * model_state.rows(2, 3);
 
             messages::localisation::Ball ball;
             ball.position = robot_space_ball_pos;
-            arma::vec2 robot_space_ball_vel = imu_to_robot * model_state.rows(2, 3);
             ball.velocity = robot_space_ball_vel + robots[0].velocity;
             ball.position_cov = model_cov.submat(0,0,1,1);
             ball.world_space = false;
