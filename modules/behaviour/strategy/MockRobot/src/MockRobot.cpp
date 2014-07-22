@@ -47,6 +47,7 @@ namespace modules {
             using utility::math::angle::vectorToBearing;
             using utility::math::angle::bearingToUnitVector;
             using utility::math::coordinates::cartesianToSpherical;
+            using utility::motion::kinematics::calculateRobotToIMU;
             using utility::localisation::transform::SphericalRobotObservation;
             using utility::localisation::transform::WorldToRobotTransform;
             using utility::localisation::transform::RobotToWorldTransform;
@@ -434,6 +435,9 @@ namespace modules {
                     orientation.submat(0, 0, 1, 0) = robot_imu_dir_;
                     orientation.submat(0, 1, 1, 1) = arma::vec2({ -robot_imu_dir_(1), robot_imu_dir_(0) });
                     sensors->orientation = orientation;
+
+                    // Robot to IMU
+                    sensors->robotToIMU = calculateRobotToIMU(sensors->orientation);
 
                     // orientationCamToGround
                     sensors->orientationCamToGround = arma::eye(4, 4);
