@@ -111,40 +111,49 @@ namespace modules {
                     odometry_covariance_factor = file.config["odometry_covariance_factor"].as<double>();
                 });
 
-                on<Trigger<Last<10, messages::platform::darwin::DarwinSensors>>>([this](const LastList<messages::platform::darwin::DarwinSensors>& sensors) {
-                    int buttonLeftCount = 0;
-                    int buttonMiddleCount = 0;
+                on<Trigger<Last<20, DarwinSensors>>>([this](const LastList<DarwinSensors>& sensors) {
 
-                    for (auto& sensor : sensors) {
-                        if (sensor->buttons.left) {
-                            buttonLeftCount++;
+                    int leftCount = 0;
+                    int middleCount = 0;
+
+                    // If we have any downs in the last 20 frames then we are button pushed
+                    for (const auto& s : sensors) {
+                        if(s->buttons.left) {
+                            ++leftCount;
                         }
-                        if (sensor->buttons.middle) {
-                            buttonMiddleCount++;
+                        if(s->buttons.middle) {
+                            ++middleCount;
                         }
                     }
 
-//std::cerr << "leftCount - " << buttonLeftCount << std::endl;
-//std::cerr << "middleCount - " << buttonMiddleCount << std::endl;
-//std::cerr << "leftDown - " << ((leftDown) ? "Yes" : "No") << std::endl;
-//std::cerr << "middleDown - " << ((middleDown) ? "Yes" : "No") << std::endl;
+                    bool newLeftDown = leftCount > DEBOUNCE_THRESHOLD;
+                    bool newMiddleDown = middleCount > DEBOUNCE_THRESHOLD;
 
-                    if (!leftDown && buttonLeftCount >= DEBOUNCE_THRESHOLD) {
-                        emit(std::make_unique<ButtonLeftDown>());
-                        leftDown = true;
-                    }
-                    else if (leftDown && buttonLeftCount < DEBOUNCE_THRESHOLD) {
-                        emit(std::make_unique<ButtonLeftUp>());
-                        leftDown = false;
-                    }
+                    if(newLeftDown != leftDown) {
 
-                    if (!middleDown && buttonMiddleCount > DEBOUNCE_THRESHOLD) {
-                        emit(std::make_unique<ButtonMiddleDown>());
-                        middleDown = true;
+                        leftDown = newLeftDown;
+
+                        if(newLeftDown) {
+                            std::cout << "Left Button Down" << std::endl;
+                            emit(std::make_unique<ButtonLeftDown>());
+                        }
+                        else {
+                            std::cout << "Left Button Up" << std::endl;
+                            emit(std::make_unique<ButtonLeftUp>());
+                        }
                     }
-                    else if (middleDown && buttonMiddleCount < DEBOUNCE_THRESHOLD) {
-                        emit(std::make_unique<ButtonMiddleUp>());
-                        middleDown = false;
+                    if(newMiddleDown != middleDown) {
+
+                        middleDown = newMiddleDown;
+
+                        if(newMiddleDown) {
+                            std::cout << "Right Button Down" << std::endl;
+                            emit(std::make_unique<ButtonMiddleDown>());
+                        }
+                        else {
+                            std::cout << "Right Button Up" << std::endl;
+                            emit(std::make_unique<ButtonMiddleUp>());
+                        }
                     }
                 });
 

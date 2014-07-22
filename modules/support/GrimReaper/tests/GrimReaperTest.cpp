@@ -1,5 +1,5 @@
 /*
- * This file is part of the NUbots Codebase.
+ * This file is part of NUbots Codebase.
  *
  * The NUbots Codebase is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,37 +17,7 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
-#ifndef MESSAGES_BEHAVIOUR_LOOK_H
-#define MESSAGES_BEHAVIOUR_LOOK_H
 
-#include <armadillo>
 
-namespace messages {
-namespace behaviour {
-    struct Look {
-
-        struct Fixation {
-            arma::vec2 angle;
-            arma::vec2 arcSize;
-        };
-
-        struct Saccade {
-            NUClear::clock::duration dwellTime;
-            arma::vec2 angle;
-            arma::vec2 arcSize;
-        };
-
-        struct Pan {
-            arma::vec2 angle;
-            arma::vec2 arcSize;
-        };
-
-        struct PanSelection {
-            bool lookAtGoalInsteadOfBall;
-        };
-    };
-
-}
-}
-
-#endif
+#define CATCH_CONFIG_MAIN  // This tells Catch to provide a main() - only do this in one cpp file
+#include <catch.hpp>

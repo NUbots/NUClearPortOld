@@ -1,5 +1,5 @@
 Units: m
-BallRadius: 0.05
+BallRadius: 0.0478
 LineWidth: 0.05
 MarkWidth: 0.1
 FieldLength: 9
@@ -15,5 +15,4 @@ GoalNetHeight: 1
 PenaltyMarkDistance: 1.80 # Measured from the goal line.
 CenterCircleDiameter: 1.50
 BorderStripMinWidth: 0.7
-
-PenaltyRobotStart: 1
+PenaltyRobotStart: 1.0

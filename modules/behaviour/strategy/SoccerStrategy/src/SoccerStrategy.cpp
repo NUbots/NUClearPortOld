@@ -21,7 +21,9 @@
 
 #include "messages/input/gameevents/GameEvents.h"
 #include "messages/behaviour/LookStrategy.h"
+#include "messages/behaviour/Look.h"
 #include "messages/behaviour/WalkStrategy.h"
+#include "messages/behaviour/KickPlan.h"
 #include "messages/support/FieldDescription.h"
 #include "messages/vision/VisionObjects.h"
 #include "messages/input/Sensors.h"
@@ -49,9 +51,11 @@ namespace strategy {
     using messages::localisation::Self;
     using messages::behaviour::WalkStrategy;
     using messages::behaviour::LookStrategy;
+    using messages::behaviour::Look;
     using messages::behaviour::WalkApproach;
     using messages::behaviour::WalkTarget;
     using messages::behaviour::FieldTarget;
+    using messages::behaviour::KickPlan;
     using messages::support::FieldDescription;
     using messages::motion::ExecuteGetup;
     using messages::motion::KillGetup;
@@ -88,6 +92,9 @@ namespace strategy {
             zone.goalie = config["my_zone"]["goalie"].as<bool>();
 
         });
+
+        // TODO: unhack
+        emit(std::make_unique<KickPlan>(KickPlan{{4.5, 0}}));
 
         // For checking last seen times
         on<Trigger<std::vector<VisionBall>>>([this] (const std::vector<VisionBall>& balls) {
@@ -196,6 +203,10 @@ namespace strategy {
                                 leaf = "Playing Penalised";
                             }
                             else { // not penalised
+
+                                // log("time since ball seen:",
+                                //     std::chrono::duration_cast<std::chrono::milliseconds>(NUClear::clock::now() - ballLastSeen).count(),
+                                //     ",", std::chrono::duration_cast<std::chrono::milliseconds>(zone.ballActiveTimeout).count());
                                 if (NUClear::clock::now() - ballLastSeen < zone.ballActiveTimeout) { // ball has been seen recently
                                     if (inZone(FieldTarget::BALL) || ballDistance() <= BALL_CLOSE_DISTANCE) { // in zone or close to ball
                                         walkTo(FieldTarget::BALL);
@@ -273,21 +284,21 @@ namespace strategy {
         selfSideLeft.position = {-desc.penalty_robot_start, desc.dimensions.field_width * 0.5};
         selfSideLeft.position_cov = arma::eye(2, 2) * 0.1;
         selfSideLeft.heading = -M_PI_2;
-        selfSideLeft.heading_var = 0.01;
+        selfSideLeft.heading_var = 0.05;
         reset->hypotheses.push_back(selfSideLeft);
 
         ResetRobotHypotheses::Self selfSideRight;
         selfSideRight.position = {-desc.penalty_robot_start, -desc.dimensions.field_width * 0.5};
         selfSideRight.position_cov = arma::eye(2, 2) * 0.1;
         selfSideRight.heading = M_PI_2;
-        selfSideRight.heading_var = 0.01;
+        selfSideRight.heading_var = 0.05;
         reset->hypotheses.push_back(selfSideRight);
 
         ResetRobotHypotheses::Self selfSideBaseLine;
         selfSideBaseLine.position = {-desc.dimensions.field_length * 0.5 + desc.dimensions.goal_area_length, 0};
         selfSideBaseLine.position_cov = arma::eye(2, 2) * 0.1;
         selfSideBaseLine.heading = 0;
-        selfSideBaseLine.heading_var = 0.01;
+        selfSideBaseLine.heading_var = 0.05;
         reset->hypotheses.push_back(selfSideBaseLine);
 
         emit(std::move(reset));
@@ -426,19 +437,24 @@ namespace strategy {
             switch (object) {
                 case FieldTarget::BALL: {
                     // Prioritise balls
+                    // auto strategy = std::make_unique<LookStrategy>();
+                    // strategy->priorities = {typeid(VisionBall)};
+                    // emit(std::move(strategy));
 
-                    std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
-                    auto strategy = std::make_unique<LookStrategy>();
-                    strategy->priorities = {typeid(VisionBall)};
-                    emit(std::move(strategy));
+                    auto panSelection = std::make_unique<Look::PanSelection>();
+                    panSelection->lookAtGoalInsteadOfBall = false;
+                    emit(std::move(panSelection));
                     break;
                 }
                 case FieldTarget::SELF: {
-                    // Prioritise goals
-                    std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
-                    auto strategy = std::make_unique<LookStrategy>();
-                    strategy->priorities = {typeid(VisionGoal)};
-                    emit(std::move(strategy));
+                    // // Prioritise goals
+                    // auto strategy = std::make_unique<LookStrategy>();
+                    // strategy->priorities = {typeid(VisionGoal)};
+                    // emit(std::move(strategy));
+
+                    auto panSelection = std::make_unique<Look::PanSelection>();
+                    panSelection->lookAtGoalInsteadOfBall = true;
+                    emit(std::move(panSelection));
                     break;
                 }
                 default:
@@ -446,21 +462,33 @@ namespace strategy {
             }
         }
         else if(fieldObjects.size() == 2) {
+            // std::cout<<__FILE__<<__LINE__<<" ballLastSeen = "<<std::duration_cast<std::chrono::seconds>(ballLastSeen).count()<<std::endl;
+            // std::cout<<__FILE__<<__LINE__<<" BALL_LAST_SEEN_MAX_TIME = "<<std::duration_cast<std::chrono::seconds>(BALL_LAST_SEEN_MAX_TIME).count()<<std::endl;
+            // std::cout<<__FILE__<<__LINE__<<" goalLastSeen = "<<std::duration_cast<std::chrono::seconds>(goalLastSeen).count()<<std::endl;
+            // std::cout<<__FILE__<<__LINE__<<" GOAL_LAST_SEEN_MAX_TIME = "<< std::duration_cast<std::chrono::seconds>(GOAL_LAST_SEEN_MAX_TIME).count() <<std::endl;
+            // std::cout<<std::endl;
+
             // Balls come first
             if(NUClear::clock::now() - ballLastSeen > BALL_LAST_SEEN_MAX_TIME
                 || NUClear::clock::now() - goalLastSeen < GOAL_LAST_SEEN_MAX_TIME) {
-                // Prioritise balls
-                std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
-                auto strategy = std::make_unique<LookStrategy>();
-                strategy->priorities = {typeid(VisionBall)};
-                emit(std::move(strategy));
+                // // Prioritise balls
+                // auto strategy = std::make_unique<LookStrategy>();
+                // strategy->priorities = {typeid(VisionBall)};
+                // emit(std::move(strategy));
+
+                auto panSelection = std::make_unique<Look::PanSelection>();
+                panSelection->lookAtGoalInsteadOfBall = false;
+                emit(std::move(panSelection));
             }
             else {
-                // Prioritise goals
-                std::cout<<__FILE__<<", "<<__LINE__<<": "<< std::endl;
-                auto strategy = std::make_unique<LookStrategy>();
-                strategy->priorities = {typeid(VisionGoal)};
-                emit(std::move(strategy));
+                // // Prioritise goals
+                // auto strategy = std::make_unique<LookStrategy>();
+                // strategy->priorities = {typeid(VisionGoal)};
+                // emit(std::move(strategy));
+
+                auto panSelection = std::make_unique<Look::PanSelection>();
+                panSelection->lookAtGoalInsteadOfBall = true;
+                emit(std::move(panSelection));
             }
         }
     }

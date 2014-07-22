@@ -1,5 +1,5 @@
 /*
- * This file is part of the NUbots Codebase.
+ * This file is part of NUbots Codebase.
  *
  * The NUbots Codebase is free software: you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -17,37 +17,22 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
-#ifndef MESSAGES_BEHAVIOUR_LOOK_H
-#define MESSAGES_BEHAVIOUR_LOOK_H
+#ifndef MODULES_SUPPORT_GRIMREAPER_H
+#define MODULES_SUPPORT_GRIMREAPER_H
 
-#include <armadillo>
+#include <nuclear>
 
-namespace messages {
-namespace behaviour {
-    struct Look {
+namespace modules {
+namespace support {
 
-        struct Fixation {
-            arma::vec2 angle;
-            arma::vec2 arcSize;
-        };
-
-        struct Saccade {
-            NUClear::clock::duration dwellTime;
-            arma::vec2 angle;
-            arma::vec2 arcSize;
-        };
-
-        struct Pan {
-            arma::vec2 angle;
-            arma::vec2 arcSize;
-        };
-
-        struct PanSelection {
-            bool lookAtGoalInsteadOfBall;
-        };
+    class GrimReaper : public NUClear::Reactor {
+    public:
+        /// @brief Called by the powerplant to build and setup the GrimReaper reactor.
+        explicit GrimReaper(std::unique_ptr<NUClear::Environment> environment);
     };
 
 }
 }
+
 
 #endif
