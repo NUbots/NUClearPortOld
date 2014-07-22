@@ -50,15 +50,19 @@ namespace modules {
                 // arma::vec odom_old_robot_heading_ = { 1, 0 };
                 double odom_old_robot_heading_ = 0;
 
-                typedef struct {
-                    double speed;
-                    double yaw;
-                    double pitch;
-                } HeadPan;
+//                typedef struct {
+//                    double speed;
+//                    double yaw;
+//                    double pitch;
+//                } HeadPan;
 
-                double headYaw;
-                double headPitch;
-                std::vector<HeadPan> headPans;
+//                double headYaw;
+//                double headPitch;
+                bool saccading;
+                arma::vec2 headAngle;
+                arma::vec2 targetHeadAngle;
+                arma::vec2 headVelocity;
+                std::vector<arma::vec2> headPans;
                 size_t headPansIndex;
 
                 std::shared_ptr<messages::support::FieldDescription> field_description_;
@@ -83,6 +87,9 @@ namespace modules {
                     bool observe_right_goal = true;
                     bool distinguish_left_and_right_goals = true;
                     bool emit_localisation_ball_vector = true;
+
+                    // Sensors
+                    double odometry_covariance_factor;
                     bool simulate_robot_picked_up;
 
                     // Game Controller

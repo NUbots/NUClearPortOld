@@ -21,8 +21,9 @@ ADD_ROLE(
 #        behaviour::skills::Getup
 #        behaviour::skills::Look
 #        behaviour::skills::KickScript
-        behaviour::planning::LookAtBall
-        behaviour::planning::LookAtGoal
+#        behaviour::planning::LookAtBall
+#        behaviour::planning::LookAtGoal
+        behaviour::planning::LookPlanner
         behaviour::planning::KickPlanner
         behaviour::planning::DivePlanner
         behaviour::planning::WalkPathPlanner
@@ -30,7 +31,7 @@ ADD_ROLE(
         behaviour::strategy::MockRobot
 
         #Motion
-        motion::WalkEngine
+#        motion::WalkEngine
 
         #Output
         output::eSpeak

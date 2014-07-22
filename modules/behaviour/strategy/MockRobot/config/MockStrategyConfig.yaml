@@ -17,6 +17,9 @@ ObserveLeftGoal: true
 ObserveRightGoal: true
 DistinguishLeftAndRightGoals: true
 EmitLocalisationBallVector: false
+
+# Sensors
+OdometryCovarianceFactor: 0.05
 SimulateRobotPickedUp: false
 
 # Game Controller
