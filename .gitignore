@@ -65,6 +65,7 @@ packer/build.pwi
 *.exe
 tags
 *.swp
+*.swo
 /nbproject/
 *~
 .DS_Store

@@ -23,8 +23,6 @@
 #include <nuclear>
 #include <armadillo>
 
-#include "messages/vision/VisionObjects.h"
-
 namespace modules {
     namespace behaviour {
         namespace planning {
@@ -36,20 +34,18 @@ namespace modules {
              */
             class LookAtGoal : public NUClear::Reactor {
             private:
+                //const size_t id;
                 NUClear::clock::time_point timeSinceLastSeen;
 
-		float BALL_SEARCH_TIMEOUT_MILLISECONDS;
-		float X_FACTOR;
-		float Y_FACTOR;
-		float BALL_UNCERNTAINTY_THRESHOLD;
-
-		ReactionHandle handle;
-
-		bool compareGoals(const messages::vision::Goal& i, const messages::vision::Goal& j);
-
+                float GOAL_SEARCH_TIMEOUT_MILLISECONDS;
+                arma::vec2 SCAN_YAW;
+                arma::vec2 SCAN_PITCH;
+                
+                ReactionHandle lookAtReactionHandler;
             public:
                 explicit LookAtGoal(std::unique_ptr<NUClear::Environment> environment);
-                //static constexpr const char* CONFIGURATION_PATH = "Stand.yaml";
+
+                //static constexpr const char* CONFIGURATION_PATH = "Stand.json";
             };
 
         }  // planning

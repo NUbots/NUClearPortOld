@@ -21,6 +21,7 @@
 
 #include "utility/support/armayamlconversions.h"
 #include "utility/math/coordinates.h"
+#include "utility/localisation/transform.h"
 #include "messages/motion/KickCommand.h"
 #include "messages/motion/WalkCommand.h"
 #include "messages/localisation/FieldObject.h"
@@ -28,6 +29,8 @@
 #include "messages/behaviour/Action.h"
 #include "messages/behaviour/KickPlan.h"
 #include "messages/vision/VisionObjects.h"
+#include "utility/nubugger/NUhelpers.h"
+
 
 
 namespace modules {
@@ -35,6 +38,9 @@ namespace behaviour {
 namespace planning {
 
     using utility::math::coordinates::sphericalToCartesian;
+    using utility::localisation::transform::WorldToRobotTransform;
+    using utility::localisation::transform::RobotToWorldTransform;
+    using utility::nubugger::graph;
 
     using messages::localisation::Ball;
     using messages::localisation::Self;
@@ -58,10 +64,11 @@ namespace planning {
 
         on< Trigger<Ball>, With<std::vector<Self>>, With<std::vector<messages::vision::Ball>>, With<KickPlan> >([this] (
             const Ball& ball,
-            const std::vector<Self>& selfs, 
+            const std::vector<Self>& selfs,
             const std::vector<messages::vision::Ball>& vision_balls,
             const KickPlan& kickPlan) {
-            
+            // std::cerr<<__FILE__<<", "<<__LINE__<<": "<<__func__<<std::endl;
+
             arma::vec2 ballPosition;
 
             // If we're not seeing any vision balls, count frames not seen
@@ -72,36 +79,25 @@ namespace planning {
                 framesNotSeen++;
             } else {
 
+                // emit(graph("Kickplanner vision ball measurement (spherical)",
+                    // vision_balls.at(0).measurements.at(0).position[0],
+                    // vision_balls.at(0).measurements.at(0).position[1],
+                    // vision_balls.at(0).measurements.at(0).position[2]));
                 ballPosition = sphericalToCartesian(vision_balls.at(0).measurements.at(0).position).rows(0,1);
+                // emit(graph("Kickplanner Ball pos (vision)", ballPosition[0], ballPosition[1]));
 
                 framesNotSeen = 0;
-            }   
+            }
 
             auto self = selfs[0];
 
-            arma::vec3 goalPosition = arma::vec3({kickPlan.target[0],kickPlan.target[1],1});
-
-            arma::vec2 normed_heading = arma::normalise(self.heading);
-
-            arma::mat33 worldToRobotTransform = arma::mat33{      normed_heading[0],  normed_heading[1],         0,
-                                                                 -normed_heading[1],  normed_heading[0],         0,
-                                                                                  0,                 0,         1};
-
-            worldToRobotTransform.submat(0,2,1,2) = -worldToRobotTransform.submat(0,0,1,1) * self.position;
-
-            arma::vec3 homogeneousKickTarget = worldToRobotTransform * goalPosition;
-            arma::vec2 kickTarget = homogeneousKickTarget.rows(0,1);    //In robot coords
-
-
-            // NUClear::log("kickTarget = ", kickTarget);
-            // NUClear::log("ball position = ", ball.position);
+            arma::vec2 kickTarget = WorldToRobotTransform(self.position, self.heading, kickPlan.target);
 
             if(framesNotSeen < FRAMES_NOT_SEEN_LIMIT &&
                ballPosition[0] < MAX_BALL_DISTANCE &&
                std::fabs(ballPosition[1]) < KICK_CORRIDOR_WIDTH / 2){
 
-                float targetBearing = std::atan2(kickTarget[1],kickTarget[0]);
-                NUClear::log("targetBearing = ", std::fabs(targetBearing));
+                float targetBearing = std::atan2(kickTarget[1], kickTarget[0]);
 
                 if( std::fabs(targetBearing) < KICK_FORWARD_ANGLE_LIMIT){
                     if(ballPosition[1] < 0){

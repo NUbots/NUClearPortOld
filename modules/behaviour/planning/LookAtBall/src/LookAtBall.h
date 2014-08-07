@@ -21,6 +21,7 @@
 #define MODULES_BEHAVIOUR_PLANNERS_LOOKATBALL_H
 
 #include <nuclear>
+#include <armadillo>
 
 namespace modules {
     namespace behaviour {
@@ -34,20 +35,17 @@ namespace modules {
             class LookAtBall : public NUClear::Reactor {
             private:
                 //const size_t id;
-                std::chrono::system_clock::time_point timeLastSeen;
-                size_t BALL_SEEN_COUNT_THRESHOLD = 4;
-                size_t framesSinceSeen = 0;
-                double BALL_SEARCH_TIMEOUT_MILLISECONDS;
-		        double X_FACTOR;
-		        double Y_FACTOR;
-		        double BALL_UNCERNTAINTY_THRESHOLD;
-		
-		ReactionHandle handle;
+                NUClear::clock::time_point timeSinceLastSeen;
 
+                float BALL_SEARCH_TIMEOUT_MILLISECONDS;
+                arma::vec2 SCAN_YAW;
+                arma::vec2 SCAN_PITCH;
+
+                ReactionHandle lookAtReactionHandler;
             public:
                 explicit LookAtBall(std::unique_ptr<NUClear::Environment> environment);
 
-                //static constexpr const char* CONFIGURATION_PATH = "Stand.yaml";
+                //static constexpr const char* CONFIGURATION_PATH = "Stand.json";
             };
 
         }  // planning

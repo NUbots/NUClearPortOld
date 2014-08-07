@@ -24,13 +24,14 @@
 #include "utility/math/angle.h"
 #include "utility/math/coordinates.h"
 #include "utility/math/matrix.h"
-#include "utility/nubugger/NUgraph.h"
+#include "utility/nubugger/NUhelpers.h"
 #include "utility/localisation/LocalisationFieldObject.h"
 #include "messages/vision/VisionObjects.h"
 #include "messages/input/Sensors.h"
 #include "messages/support/Configuration.h"
 #include "messages/support/FieldDescription.h"
 #include "messages/localisation/FieldObject.h"
+#include "messages/localisation/ResetRobotHypotheses.h"
 #include "MMKFRobotLocalisationEngine.h"
 #include "RobotModel.h"
 
@@ -38,14 +39,14 @@ using utility::math::angle::bearingToUnitVector;
 using utility::math::matrix::zRotationMatrix;
 using utility::nubugger::graph;
 using utility::localisation::LocalisationFieldObject;
+using modules::localisation::MultiModalRobotModelConfig;
 using messages::support::Configuration;
 using messages::support::FieldDescription;
-using messages::localisation::FakeOdometry;
 using messages::input::Sensors;
-using modules::localisation::MultiModalRobotModelConfig;
+using messages::vision::Goal;
 using messages::localisation::Mock;
 using messages::localisation::Self;
-using messages::vision::Goal;
+using messages::localisation::ResetRobotHypotheses;
 
 namespace modules {
 namespace localisation {
@@ -56,6 +57,7 @@ namespace localisation {
         on<Trigger<Configuration<MultiModalRobotModelConfig>>>(
             "MultiModalRobotModelConfig Update",
             [this](const Configuration<MultiModalRobotModelConfig>& config) {
+
             engine_->UpdateConfiguration(config);
             NUClear::log("Localisation config finished successfully!");
         });
@@ -70,7 +72,6 @@ namespace localisation {
            With<Optional<FieldDescription>>>("FieldDescription Update",
            [this](const Startup&, const std::shared_ptr<const FieldDescription>& desc) {
             if (desc == nullptr) {
-                NUClear::log(__FILE__, ", ", __LINE__, ": FieldDescription Update: support::configuration::SoccerConfig module might not be installed.");
                 throw std::runtime_error("FieldDescription Update: support::configuration::SoccerConfig module might not be installed");
             }
 
@@ -78,12 +79,18 @@ namespace localisation {
             engine_->set_field_description(fd);
         });
 
+        on<Trigger<ResetRobotHypotheses>,
+           Options<Sync<MMKFRobotLocalisation>>,
+           With<Sensors>
+          >("Localisation ResetRobotHypotheses", [this](const ResetRobotHypotheses& reset, const Sensors& sensors) {
+            engine_->Reset(reset, sensors);
+        });
+
         // Emit to NUbugger
         on<Trigger<Every<100, std::chrono::milliseconds>>,
            With<Sensors>,
            Options<Sync<MMKFRobotLocalisation>>
-           >("NUbugger Output", [this](const time_t&, const Sensors& sensors) {
-
+           >("Localisation NUbugger Output", [this](const time_t&, const Sensors& sensors) {
             auto& hypotheses = engine_->robot_models_.hypotheses();
             if (hypotheses.size() == 0) {
                 NUClear::log<NUClear::ERROR>("MMKFRobotLocalisation has no robot hypotheses.");
@@ -101,9 +108,8 @@ namespace localisation {
                 arma::mat33 imuRotation = zRotationMatrix(model_state(robot::kImuOffset));
                 arma::vec3 world_heading = imuRotation * arma::mat(sensors.orientation.t()).col(0);
                 robot_model.heading = world_heading.rows(0, 1);
-                robot_model.sr_xx = model_cov(0, 0);
-                robot_model.sr_xy = model_cov(0, 1);
-                robot_model.sr_yy = model_cov(1, 1);
+                robot_model.velocity = model_state.rows(robot::kVX, robot::kVY);
+                robot_model.position_cov = model_cov.submat(0,0,1,1);
                 robots.push_back(robot_model);
             }
 
@@ -117,38 +123,41 @@ namespace localisation {
             }
         });
 
-        // on<Trigger<FakeOdometry>,
-        //    Options<Sync<MMKFRobotLocalisation>>
-        //   >("MMKFRobotLocalisation Odometry", [this](const FakeOdometry& odom) {
-        //     auto curr_time = NUClear::clock::now();
-        //     engine_->TimeUpdate(curr_time, odom);
-        // });
-        // on<Trigger<Sensors>,
-        //    Options<Sync<MMKFRobotLocalisation>>
-        //   >("MMKFRobotLocalisation Sensors", [this](const Sensors& sensors) {
-        //     auto curr_time = NUClear::clock::now();
-        //     engine_->TimeUpdate(curr_time);
-        //     // engine_->SensorsUpdate(sensors);
-        // });
-        on<Trigger<Every<100, Per<std::chrono::seconds>>>,
+        on<Trigger<Sensors>,
            Options<Sync<MMKFRobotLocalisation>>
-          >("MMKFRobotLocalisation Time", [this](const time_t&) {
+          >("MMKFRobotLocalisation Odometry", [this](const Sensors& sensors) {
             auto curr_time = NUClear::clock::now();
-            engine_->TimeUpdate(curr_time);
+            engine_->TimeUpdate(curr_time, sensors);
+            engine_->OdometryMeasurementUpdate(sensors);
+        });
+
+        on<Trigger<Every<100, Per<std::chrono::seconds>>>,
+           With<Sensors>,
+           Options<Sync<MMKFRobotLocalisation>>
+          >("MMKFRobotLocalisation Time", [this](const time_t&, const Sensors& sensors) {
+            auto curr_time = NUClear::clock::now();
+            engine_->TimeUpdate(curr_time, sensors);
         });
 
         on<Trigger<std::vector<messages::vision::Goal>>,
+           With<Sensors>,
            Options<Sync<MMKFRobotLocalisation>>
           >("MMKFRobotLocalisation Step",
-            [this](const std::vector<messages::vision::Goal>& goals) {
-            
+            [this](const std::vector<messages::vision::Goal>& goals, const Sensors& sensors) {
+
             // Ignore empty vectors of goals.
             if (goals.size() == 0)
                 return;
 
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
             // // std::cout << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;
+
+            // Ignore measurements when both of the robots feet are off the ground.
+            if (!goals[0].sensors->leftFootDown && !goals[0].sensors->rightFootDown) {
+                return;
+            }
+
             // for (auto& goal : goals) {
-            //     // std::cout << __FILE__ << ", " << __LINE__ << ":" << std::endl;
             //     // std::cout << "  side:";
             //     // std::cout << ((goal.side == Goal::Side::LEFT) ? "LEFT" :
             //     //               (goal.side == Goal::Side::RIGHT) ? "RIGHT" : "UNKNOWN")
@@ -166,9 +175,12 @@ namespace localisation {
             //     }
             // }
 
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
             auto curr_time = NUClear::clock::now();
-            engine_->TimeUpdate(curr_time);
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
+            engine_->TimeUpdate(curr_time, sensors);
             engine_->ProcessObjects(goals);
+//std::cerr << __FILE__ << ", " << __LINE__ << ": " << __func__ << std::endl;    
         });
     }
 }

@@ -5,6 +5,7 @@ ADD_ROLE(
         support::SignalCatcher
         support::logging::ConsoleLogHandler
         support::configuration::ConfigSystem
+        support::configuration::GlobalConfig
         support::configuration::SoccerConfig
         support::NUbugger
 
@@ -24,10 +25,9 @@ ADD_ROLE(
         #Behaviour
         behaviour::Controller
         behaviour::skills::Stand
-                    # behaviour::skills::FallingRelax 
+                    # behaviour::skills::FallingRelax
         behaviour::skills::Getup
-        behaviour::skills::Look
-        behaviour::planning::LookAtBall
+        behaviour::skills::LookAt
         behaviour::skills::GoalSaver
 
         #Motion

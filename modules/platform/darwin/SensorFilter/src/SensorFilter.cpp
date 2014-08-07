@@ -23,7 +23,7 @@
 #include "messages/input/Sensors.h"
 #include "messages/input/CameraParameters.h"
 #include "messages/support/Configuration.h"
-#include "utility/nubugger/NUgraph.h"
+#include "utility/nubugger/NUhelpers.h"
 #include "utility/math/matrix.h"
 #include "utility/motion/ForwardKinematics.h"
 #include "utility/motion/RobotModels.h"
@@ -46,10 +46,10 @@ namespace modules {
             using utility::motion::kinematics::DarwinModel;
             using utility::motion::kinematics::calculateCentreOfMass;
             using utility::motion::kinematics::Side;
+            using utility::motion::kinematics::calculateRobotToIMU;
             using utility::math::matrix::orthonormal44Inverse;
             using utility::math::matrix::quaternionToRotationMatrix;
             using utility::math::kalman::IMUModel;
-
 
             std::string makeErrorString(const std::string& src, uint errorCode) {
                 std::stringstream s;
@@ -85,7 +85,8 @@ namespace modules {
 
             SensorFilter::SensorFilter(std::unique_ptr<NUClear::Environment> environment)
             : Reactor(std::move(environment))
-            , orientationFilter(arma::vec({0,0,0,1,0,0,0}))
+            // intialize orientation filter to measured values when standing
+            , orientationFilter(arma::vec({0, 0, 0, -9.6525e-01, -2.4957e-02, 1.8088e-01, 1.8696e-01}))
             , velocityFilter(arma::vec3({0,0,0})) {
 
                 on<Trigger<Configuration<SensorFilter>>>([this](const Configuration<SensorFilter>& file){
@@ -93,6 +94,8 @@ namespace modules {
                     HIGH_NOISE_THRESHOLD = file.config["HIGH_NOISE_THRESHOLD"].as<double>();
                     HIGH_NOISE_GAIN = file.config["HIGH_NOISE_GAIN"].as<double>();
                     LOW_NOISE_THRESHOLD = file.config["LOW_NOISE_THRESHOLD"].as<double>();
+                    DEBOUNCE_THRESHOLD = file.config["DEBOUNCE_THRESHOLD"].as<int>();
+
 
                     SUPPORT_FOOT_FSR_THRESHOLD = file.config["SUPPORT_FOOT_FSR_THRESHOLD"].as<double>();
                     REQUIRED_NUMBER_OF_FSRS = file.config["REQUIRED_NUMBER_OF_FSRS"].as<int>();
@@ -104,42 +107,53 @@ namespace modules {
 
                     MEASUREMENT_NOISE_ACCELEROMETER = arma::eye(3,3) * file["MEASUREMENT_NOISE_ACCELEROMETER"].as<double>();
                     MEASUREMENT_NOISE_GYROSCOPE = arma::eye(3,3) * file["MEASUREMENT_NOISE_GYROSCOPE"].as<double>();
+
+                    odometry_covariance_factor = file.config["odometry_covariance_factor"].as<double>();
                 });
 
-                on<Trigger<Last<10, messages::platform::darwin::DarwinSensors>>>([this](const std::vector<std::shared_ptr<const messages::platform::darwin::DarwinSensors>>& sensors) {
-                    uint buttonLeftCount = 0;
-                    uint buttonMiddleCount = 0;
+                on<Trigger<Last<20, DarwinSensors>>>([this](const LastList<DarwinSensors>& sensors) {
 
-                    for (auto& sensor : sensors) {
-                        if (sensor->buttons.left) {
-                            buttonLeftCount++;
+                    int leftCount = 0;
+                    int middleCount = 0;
+
+                    // If we have any downs in the last 20 frames then we are button pushed
+                    for (const auto& s : sensors) {
+                        if(s->buttons.left && !s->cm730ErrorFlags) {
+                            ++leftCount;
                         }
-                        if (sensor->buttons.middle) {
-                            buttonMiddleCount++;
+                        if(s->buttons.middle && !s->cm730ErrorFlags) {
+                            ++middleCount;
                         }
                     }
 
-std::cerr << "leftCount - " << buttonLeftCount << std::endl;
-std::cerr << "middleCount - " << buttonMiddleCount << std::endl;
-std::cerr << "leftDown - " << ((leftDown) ? "Yes" : "No") << std::endl;
-std::cerr << "middleDown - " << ((middleDown) ? "Yes" : "No") << std::endl;
+                    bool newLeftDown = leftCount > DEBOUNCE_THRESHOLD;
+                    bool newMiddleDown = middleCount > DEBOUNCE_THRESHOLD;
 
-                    if (!leftDown && buttonLeftCount >= DEBOUNCE_THRESHOLD) {
-                        emit(std::make_unique<ButtonLeftDown>());
-                        leftDown = true;
-                    }
-                    else if (leftDown && buttonLeftCount < DEBOUNCE_THRESHOLD) {
-                        emit(std::make_unique<ButtonLeftUp>());
-                        leftDown = false;
-                    }
+                    if(newLeftDown != leftDown) {
 
-                    if (!middleDown && buttonMiddleCount > DEBOUNCE_THRESHOLD) {
-                        emit(std::make_unique<ButtonMiddleDown>());
-                        middleDown = true;
+                        leftDown = newLeftDown;
+
+                        if(newLeftDown) {
+                            std::cout << "Left Button Down" << std::endl;
+                            emit(std::make_unique<ButtonLeftDown>());
+                        }
+                        else {
+                            std::cout << "Left Button Up" << std::endl;
+                            emit(std::make_unique<ButtonLeftUp>());
+                        }
                     }
-                    else if (middleDown && buttonMiddleCount < DEBOUNCE_THRESHOLD) {
-                        emit(std::make_unique<ButtonMiddleUp>());
-                        middleDown = false;
+                    if(newMiddleDown != middleDown) {
+
+                        middleDown = newMiddleDown;
+
+                        if(newMiddleDown) {
+                            std::cout << "Right Button Down" << std::endl;
+                            emit(std::make_unique<ButtonMiddleDown>());
+                        }
+                        else {
+                            std::cout << "Right Button Up" << std::endl;
+                            emit(std::make_unique<ButtonMiddleUp>());
+                        }
                     }
                 });
 
@@ -260,6 +274,8 @@ std::cerr << "middleDown - " << ((middleDown) ? "Yes" : "No") << std::endl;
                     // sensors->orientation.col(0) = orientation.rows(3,5);
                     // sensors->orientation.col(1) = arma::cross(sensors->orientation.col(2), sensors->orientation.col(0));
 
+                    sensors->robotToIMU = calculateRobotToIMU(sensors->orientation);
+
                     /************************************************
                      *                  Kinematics                  *
                      ************************************************/
@@ -298,7 +314,6 @@ std::cerr << "middleDown - " << ((middleDown) ? "Yes" : "No") << std::endl;
                     //     sensors->rightFootDown = previousSensors->rightFootDown;
                     // }
 
-                    sensors->odometry = arma::eye(4,4);
                     // // Kinematics odometry
                     // arma::mat44 odometryRightFoot = arma::eye(4,4);
                     // arma::mat44 odometryLeftFoot = arma::eye(4,4);
@@ -331,12 +346,14 @@ std::cerr << "middleDown - " << ((middleDown) ? "Yes" : "No") << std::endl;
                             arma::vec3 torsoVelFromRightFoot =  -(measuredTorsoFromRightFoot - previousMeasuredTorsoFromRightFoot);
 
                             arma::vec3 averageVelocity = (torsoVelFromLeftFoot * static_cast<int>(sensors->leftFootDown) + torsoVelFromRightFoot * static_cast<int>(sensors->rightFootDown))/(static_cast<int>(sensors->rightFootDown) + static_cast<int>(sensors->leftFootDown));
-                            sensors->odometry.submat(0,3,2,3) = averageVelocity;
+                            sensors->odometry = averageVelocity.rows(0,1) / deltaT;
                         }
 
                         // Gyro based odometry for orientation
-                        sensors->odometry.submat(0,0,2,2) =  previousSensors->orientation.t() * sensors->orientation;
+                    } else {
+                        sensors->odometry.zeros();
                     }
+                    sensors->odometryCovariance = arma::eye(2,2) * odometry_covariance_factor;
 
                     if(sensors->leftFootDown){
                         sensors->bodyCentreHeight = -sensors->forwardKinematics[ServoID::L_ANKLE_ROLL](2,3);
@@ -392,18 +409,18 @@ std::cerr << "middleDown - " << ((middleDown) ? "Yes" : "No") << std::endl;
                     emit(graph("Gyro Filtered", sensors->gyroscope[0],sensors->gyroscope[1], sensors->gyroscope[2]
                         ));*/
 
-                        integratedOdometry += sensors->odometry.submat(0,3,1,3);
+                        integratedOdometry += sensors->odometry * deltaT;
 
-                    /*emit(graph("LFoot Down", sensors->leftFootDown
-                        ));
-                    emit(graph("RFoot Down", sensors->rightFootDown
-                        ));
-                    emit(graph("Torso Velocity (vx,vy,vz)", sensors->odometry(0,3), sensors->odometry(1,3), sensors->odometry(2,3)
-                        ));
+                    // emit(graph("LFoot Down", sensors->leftFootDown
+                    //     ));
+                    // emit(graph("RFoot Down", sensors->rightFootDown
+                    //     ));
+                    // emit(graph("Torso Velocity (vx,vy,vz)", sensors->odometry(0,3), sensors->odometry(1,3), sensors->odometry(2,3)
+                    //     ));
                     emit(graph("Integrated Odometry", integratedOdometry[0], integratedOdometry[1]
                         ));
-                    emit(graph("COM", sensors->centreOfMass[0], sensors->centreOfMass[1], sensors->centreOfMass[2], sensors->centreOfMass[3]
-                        ));*/
+                    // emit(graph("COM", sensors->centreOfMass[0], sensors->centreOfMass[1], sensors->centreOfMass[2], sensors->centreOfMass[3]
+                    //     ));
 
                     emit(std::move(sensors));
                 });

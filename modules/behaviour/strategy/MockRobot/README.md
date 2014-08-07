@@ -1,5 +1,5 @@
-GoalieStrategy
-==============
+MockRobot
+=========
 
 ## Description
 

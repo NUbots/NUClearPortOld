@@ -5,6 +5,7 @@ ADD_ROLE(
         # support::SignalCatcher
         support::logging::ConsoleLogHandler
         support::configuration::ConfigSystem
+        support::configuration::GlobalConfig
         support::configuration::SoccerConfig
         support::NUbugger
 
@@ -22,15 +23,13 @@ ADD_ROLE(
 
         #Localisation
         localisation::MMKFRobotLocalisation
-        # localisation::KFBallLocalisation
+        localisation::KFBallLocalisation
 
         #Behaviour
         behaviour::Controller
         behaviour::skills::Stand
         # behaviour::skills::FallingRelax
         # behaviour::skills::Getup
-        # behaviour::skills::Look
-        # behaviour::planning::LookAtBall
 
 		#Motion
         motion::ScriptEngine

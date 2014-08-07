@@ -17,26 +17,35 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
-#ifndef NUGRAPH_H
-#define NUGRAPH_H
+#ifndef MESSAGES_BEHAVIOUR_LOOK_H
+#define MESSAGES_BEHAVIOUR_LOOK_H
 
-#include <nuclear>
-#include "messages/support/nubugger/proto/DataPoint.pb.h"
+#include <armadillo>
 
-namespace utility {
-namespace nubugger{
+namespace messages {
+namespace behaviour {
+    struct Look {
 
-    template<typename... Values>
-    inline std::unique_ptr<messages::support::nubugger::proto::DataPoint> graph(std::string label, Values... values) {
+        struct Fixation {
+            arma::vec2 angle;
+            arma::vec2 arcSize;
+        };
 
+        struct Saccade {
+            NUClear::clock::duration dwellTime;
+            arma::vec2 angle;
+            arma::vec2 arcSize;
+        };
 
-    	auto dataPoint = std::make_unique<messages::support::nubugger::proto::DataPoint>();
-    	dataPoint->set_label(label);
-    	for(const auto& value : { float(values)... }) {
-    		dataPoint->add_value(value);
-    	}
-    	return std::move(dataPoint);
-    }
+        struct Pan {
+            arma::vec2 angle;
+            arma::vec2 arcSize;
+        };
+
+        struct PanSelection {
+            bool lookAtGoalInsteadOfBall;
+        };
+    };
 
 }
 }
