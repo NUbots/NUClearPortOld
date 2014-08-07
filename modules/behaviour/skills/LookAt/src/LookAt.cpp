@@ -110,7 +110,7 @@ namespace modules {
                             }
                         }
 
-                        targetPoint = (currentSelection + 1) % currentPoints.size();
+                        targetPoint = arma::conv_to<arma::fvec>::from(currentPoints[(currentSelection + 1) % currentPoints.size()]);
                     }
 
                     //get the approximate distance of movement
@@ -127,7 +127,7 @@ namespace modules {
                     waypoints->push_back({id, time, ServoID::HEAD_YAW,      targetPoint[0],  30.f});
                     waypoints->push_back({id, time, ServoID::HEAD_PITCH,    targetPoint[1], 30.f});
                     for (auto& waypoint : *waypoints) {
-                        std::cout << static_cast<uint>(waypoint.id) << ", " << waypoint.position << std::endl;
+                        std::cout << __FILE__<< " " << __LINE__ << " " <<static_cast<uint>(waypoint.id) << ", " << waypoint.position << std::endl;
                     }
 
 
