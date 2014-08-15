@@ -3,16 +3,17 @@ ADD_ROLE(
     MODULES
         support::configuration::ConfigSystem
         support::configuration::GlobalConfig
-        input::LinuxCamera
+        #input::LinuxCamera
+        input::FlycapCamera
         vision::LUTClassifier
         vision::GoalDetector
         vision::BallDetector
         vision::ObstacleDetector
         support::NUbugger
         support::logging::ConsoleLogHandler
-        platform::darwin::HardwareIO
+        #platform::darwin::HardwareIO
+        platform::fakedarwin::HardwareIO
         platform::darwin::SensorFilter
-
         support::configuration::SoccerConfig
 )
 

@@ -1,0 +1,52 @@
+deviceID: 0
+
+imageFormat: YUYV
+#don't change the image size, it is fixed for this implementation.
+imageWidth: 1280
+imageHeight: 960
+FOV_X: 1.0472
+FOV_Y: 0.785398
+DISTORTION_FACTOR: -0.000018
+
+
+# Gain control. This is effectively turning up the "Volume" of the signal, including the noise.
+# (int): min=160 max=842 step=1 default=160 float range is -5.63035, 24.0001 - unsure if both must be set)
+gain: 160
+#auto is supported (bool): default=1
+gain_auto: 0
+
+# Brightness control.
+# (int): min=0 max=1023 step=1 default=0 (float range is 0. to 6.2439 unsure if both must be set)
+brightness: 0
+
+# Gamma control.
+# (int): min=512 max=4095 step=1 default=1024 (float range is 0.5 to 3.9902, unsure if both must be set)
+gamma: 1024
+
+# This control specifies the white balance settings as a color temperature in red and blue.
+# (int): min=0 max=1023 step=1 default=550/810
+white_balance_temperature_red: 550
+white_balance_temperature_blue: 810
+# auto is supported (bool): default=1
+#IMPLEMENTATION NOTE: auto white is a separate setting to balance even though it has an auto flag
+auto_white_balance: 0
+
+# Determines the exposure time of the camera sensor. The exposure time is limited by the frame interval.
+# Drivers should interpret the values as 100 µs units, where the value 1 stands for 1/10000th of a second, 10000 for 1 second and 100000 for 10 seconds.
+# (int): min=0 max=1077 step=1 default=256/12.0158
+absolute_exposure: 256
+absolute_exposure_float: 12.0158
+
+# exposure has auto option (bool)   : default=1
+#IMPLEMENTATION NOTE: auto white is a separate setting to balance even though it has an auto flag
+auto_exposure: 0
+#unsure what the float val of auto exposure does. Range: -7.58496, 2.41364
+auto_exposure_val: -7.58496
+
+# This control turns the camera horizontally to the specified position. Positive values move the camera to the right (clockwise when viewed from above), negative values to the left. Drivers should interpret the values as arc seconds, with valid values between -180 * 3600 and +180 * 3600 inclusive.
+# (int): min=0 max=16 step=1 default=8
+absolute_pan: 8
+
+# This control turns the camera vertically to the specified position. Positive values move the camera up, negative values down. Drivers should interpret the values as arc seconds, with valid values between -180 * 3600 and +180 * 3600 inclusive.
+# (int): min=0 max=4 step=1 default=2
+absolute_tilt: 2

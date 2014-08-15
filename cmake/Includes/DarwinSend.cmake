@@ -22,3 +22,7 @@ ENDFOREACH(robot)
 ADD_CUSTOM_TARGET("nc"
 		  COMMAND python "${CMAKE_SOURCE_DIR}/cmake/Scripts/install.py" "--robot_ip=10.0.1.120" "--username=nubots"
 		  DEPENDS ${roles} "${CMAKE_SOURCE_DIR}/cmake/Scripts/install.py")
+
+ADD_CUSTOM_TARGET("robotx"
+		  COMMAND python "${CMAKE_SOURCE_DIR}/cmake/Scripts/install.py" "--robot_ip=10.0.1.40" "--username=robotx" "--config=u"
+		  DEPENDS ${roles} "${CMAKE_SOURCE_DIR}/cmake/Scripts/install.py")
