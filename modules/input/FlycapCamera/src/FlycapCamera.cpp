@@ -64,30 +64,114 @@ namespace modules {
                                 [](FlyCapture2::Image* pImage, const void* pCallbackData) {
                                     FlycapCamera* reactor = reinterpret_cast<FlycapCamera*>(const_cast<void*>(pCallbackData));
                                     
-                                    std::vector<messages::input::Image::Pixel> data(640 * 480);
+                                    std::vector<messages::input::Image::Pixel> data(960*1280, {0,0,0});
                                     std::unique_ptr<messages::input::Image> image;
                                     FlyCapture2::Image& rawImage = *pImage;
 
                                     //const size_t total = 1280 * 960;
 
-                                    // Fix the colour information to be YUV444 rather then YUV422
-                                    for (size_t j = 0; j < 960; ++++j) {
-                                        for(size_t i = 0; i < 1280; ++++i) {
+                                    // do a cache-coherent demosaic step
+                                    for (size_t j = 1; j < 959*1280; j += 1280) {
+                                        
+                                        
+                                        for(size_t i = 0; i < 1277; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
+                                            
+                                            const size_t index = i+j;
+                                            //do the current row
+                                            auto& px = data[index];
+                                            auto& pxNext = data[index+1];
+                                            auto& pxNextNext = data[index+2];
+                                            
+                                            //get the required information
+                                            const auto& currentGreen = *rawImage[index];
+                                            const auto& currentBlue = *rawImage[index+1];
+                                            const auto& nextGreen = *rawImage[index+2];
+                                            const auto& nextBlue = *rawImage[index+3];
+                                            
+                                            //demosaic red and green
+                                            px.cr = currentBlue;
+                                            pxNext.cb = currentGreen;
+                                            pxNext.cr = (unsigned char)(((unsigned int)currentBlue + (unsigned int)nextBlue) >> 1);
+                                            pxNextNext.cb = (unsigned char)(((unsigned int)currentGreen + (unsigned int)nextGreen) >> 1);
+                                            
+                                            //do the row below
+                                            px = data[index+1280];
+                                            pxNext = data[index+1+1280];
+                                            pxNextNext = data[index+2+1280];
+                                            
+                                            px.cr = currentBlue;
+                                            pxNext.cb = currentGreen;
+                                            pxNext.cr = (unsigned char)(((unsigned int)currentBlue + (unsigned int)nextBlue) >> 1);
+                                            pxNextNext.cb = (unsigned char)(((unsigned int)currentGreen + (unsigned int)nextGreen) >> 1);
+                                            
+                                            //do the row above
+                                            //XXX: if we are feeling hacky, this line can be ignored. It just makes things nicer
+                                            px = data[index-1280];
+                                            pxNext = data[index+1-1280];
+                                            pxNextNext = data[index+2-1280];
+                                            
+                                            px.cr = (unsigned char)(((unsigned int)currentBlue + (unsigned int)px.cr) >> 1);
+                                            pxNext.cb = (unsigned char)(((unsigned int)currentGreen + (unsigned int)pxNext.cb) >> 1);
+                                            pxNext.cr = (unsigned char)(((((unsigned int)currentBlue + (unsigned int)nextBlue) >> 1) + (unsigned int)pxNext.cr) >> 1);
+                                            pxNextNext.cb = (unsigned char)(((((unsigned int)currentGreen + (unsigned int)nextGreen) >> 1) + (unsigned int)pxNextNext.cb) >> 1);
+                                            
+                                        }
+                                        j += 1280;
+                                        // do the second line
+                                        for(size_t i = 0; i < 1277; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
+                                            
+                                            const size_t index = i+j;
+                                            //do the current row
+                                            auto& px = data[index];
+                                            auto& pxNext = data[index+1];
+                                            auto& pxNextNext = data[index+2];
+                                            
+                                            //get the required information
+                                            const auto& currentRed = *rawImage[index];
+                                            const auto& currentGreen = *rawImage[index+1];
+                                            const auto& nextRed = *rawImage[index+2];
+                                            const auto& nextGreen = *rawImage[index+3];
+                                            
+                                            //demosaic red and green
+                                            px.y = currentRed;
+                                            pxNext.cb = currentGreen;
+                                            pxNext.y = (unsigned char)(((unsigned int)currentRed + (unsigned int)nextRed) >> 1);
+                                            pxNextNext.cb = (unsigned char)(((unsigned int)currentGreen + (unsigned int)nextGreen) >> 1);
+                                            
+                                            //do the row below
+                                            px = data[index+1280];
+                                            pxNext = data[index+1+1280];
+                                            pxNextNext = data[index+2+1280];
+                                            
+                                            px.y = currentRed;
+                                            pxNext.cb = currentGreen;
+                                            pxNext.y = (unsigned char)(((unsigned int)currentRed + (unsigned int)nextRed) >> 1);
+                                            pxNextNext.cb = (unsigned char)(((unsigned int)currentGreen + (unsigned int)nextGreen) >> 1);
+                                            
+                                            //do the row above
+                                            //XXX: if we are feeling hacky, this line can be ignored. It just makes things nicer
+                                            px = data[index-1280];
+                                            pxNext = data[index+1-1280];
+                                            pxNextNext = data[index+2-1280];
+                                            
+                                            px.y = (unsigned char)(((unsigned int)currentRed + (unsigned int)px.y) >> 1);
+                                            pxNext.cb = (unsigned char)(((unsigned int)currentGreen + (unsigned int)pxNext.cb) >> 1);
+                                            pxNext.y = (unsigned char)(((((unsigned int)currentRed + (unsigned int)nextRed) >> 1) + (unsigned int)pxNext.y) >> 1);
+                                            pxNextNext.cb = (unsigned char)(((((unsigned int)currentGreen + (unsigned int)nextGreen) >> 1) + (unsigned int)pxNextNext.cb) >> 1);
                                             
                                             //utility::image::YCbCr res = utility::image::toYCbCr(utility::image::RGB{uint8_t(*(rawImage(j+1,i))),
                                             //                                                    uint8_t(*(rawImage(j,i))),
                                             //                                                    uint8_t(*(rawImage(j,i+1)))
                                             //                                                    });
                                             
-                                            
                                             //NOTE:
                                             //we think i,j and i+1,j+1 are green
                                             //i+1,j is BLUE
                                             //i,j+1 is RED
+                                            //data[(i+640*j)/2].y  = *(rawImage(j+1,i)); //res.Y;
+                                            //data[(i+640*j)/2].cb = *(rawImage(j,i)); //res.Cb;
+                                            //data[(i+640*j)/2].cr = *(rawImage(j,i+1)); //res.Cr;
                                             
-                                            data[(i+640*j)/2].y  = *(rawImage(j+1,i)); //res.Y;
-                                            data[(i+640*j)/2].cb = *(rawImage(j,i)); //res.Cb;
-                                            data[(i+640*j)/2].cr = *(rawImage(j,i+1)); //res.Cr;
                                         }
                                     }
                                     image = std::unique_ptr<messages::input::Image>(new messages::input::Image(640, 480, std::move(data)));
