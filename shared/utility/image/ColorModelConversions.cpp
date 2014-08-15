@@ -143,23 +143,24 @@ namespace image {
         return toHSV(rgb);
     }
 
-     YCbCr toYCbCr(RGB rgb) {
-        unsigned char R = rgb.r;
-        unsigned char G = rgb.g;
-        unsigned char B = rgb.b;
-
-        float y = (R * .299) + (G * .587) + (B * .114);
-        float cb = (R * -.169) + (G * -.332) + (B * .500) + 128;
-        float cr = (R * .500) + (G * -.419) + (B * -.0813) + 128;
-        if(y < 0) y = 0; else if(y > 255) y = 255;
-        if(cb < 0) cb = 0; else if(cb > 255) cb = 255;
-        if(cr < 0) cr = 0; else if(cr > 255) cr = 255;
-
-        YCbCr ycbcr;
-        ycbcr.Y = (unsigned char) std::rint(y);
-        ycbcr.Cb = (unsigned char) std::rint(cb);
-        ycbcr.Cr = (unsigned char) std::rint(cr);
-        return ycbcr;
+     YCbCr toYCbCr(const RGB& rgb) {
+        return {
+                static_cast<unsigned char>(
+                fmin(255,fmax(  rgb.r*0.299 +
+                                rgb.g*0.587 +
+                                rgb.b*0.114
+                                ,0))),
+                static_cast<unsigned char>(
+                fmin(255,fmax(  rgb.r*-0.169 +
+                                rgb.g*-0.332 +
+                                rgb.b*0.500 +
+                                128.0,0))),
+                static_cast<unsigned char>(
+                fmin(255,fmax(  rgb.r*0.500 +
+                                rgb.g*-0.419 +
+                                rgb.b*-0.0813 +
+                                128.0,0)))
+                };
     }
 
      YCbCr toYCbCr(HSV hsv) {

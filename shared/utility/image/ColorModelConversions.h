@@ -33,7 +33,7 @@ namespace utility {
          RGB toRGB(HSV hsv);
          HSV toHSV(RGB rgb);
          HSV toHSV(YCbCr ycbcr);
-         YCbCr toYCbCr(RGB rgb);
+         YCbCr toYCbCr(const RGB& rgb);
          YCbCr toYCbCr(HSV hsv);
     }
 }

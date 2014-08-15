@@ -74,20 +74,20 @@ namespace modules {
                                     for (size_t j = 0; j < 960; ++++j) {
                                         for(size_t i = 0; i < 1280; ++++i) {
                                             
-                                            utility::image::YCbCr res = utility::image::toYCbCr(utility::image::RGB{uint8_t(*(rawImage(j+1,i))),
-                                                                                                uint8_t(*(rawImage(j,i))),
-                                                                                                uint8_t(*(rawImage(j,i+1)))
-                                                                                                });
+                                            //utility::image::YCbCr res = utility::image::toYCbCr(utility::image::RGB{uint8_t(*(rawImage(j+1,i))),
+                                            //                                                    uint8_t(*(rawImage(j,i))),
+                                            //                                                    uint8_t(*(rawImage(j,i+1)))
+                                            //                                                    });
                                             
                                             
                                             //NOTE:
-                                            //we think i,j and i+1,j+1 are grean
+                                            //we think i,j and i+1,j+1 are green
                                             //i+1,j is BLUE
                                             //i,j+1 is RED
                                             
-                                            data[(i+640*j)/2].y  = res.Y;
-                                            data[(i+640*j)/2].cb = res.Cb;
-                                            data[(i+640*j)/2].cr = res.Cr;
+                                            data[(i+640*j)/2].y  = *(rawImage(j+1,i)); //res.Y;
+                                            data[(i+640*j)/2].cb = *(rawImage(j,i)); //res.Cb;
+                                            data[(i+640*j)/2].cr = *(rawImage(j,i+1)); //res.Cr;
                                         }
                                     }
                                     image = std::unique_ptr<messages::input::Image>(new messages::input::Image(640, 480, std::move(data)));
@@ -104,16 +104,18 @@ namespace modules {
                 
                 //this is how to set properties
                 //XXX: brightness is not enabled by default - do we want it? (ditto for temperature)
-                //auto& s = camera.getSettings()["brightness"];
-                //s.valueA = config["brightness"].as<unsigned int>();
-                //camera.camera.SetProperty(&s);
+                auto& s = camera.getSettings()["brightness"];
+                //s.onOff = true;
+                s.valueA = config["brightness"].as<unsigned int>();
+                camera.camera.SetProperty(&s);
                 
-                auto& s = camera.getSettings()["gain"];
+                s = camera.getSettings()["gain"];
                 s.autoManualMode = config["gain_auto"].as<unsigned int>();
                 s.valueA = config["gain"].as<unsigned int>();
                 camera.camera.SetProperty(&s);
                 
                 s = camera.getSettings()["gamma"];
+                s.onOff = true;
                 s.valueA = config["gamma"].as<unsigned int>();
                 camera.camera.SetProperty(&s);
                 
@@ -137,6 +139,7 @@ namespace modules {
                 s = camera.getSettings()["white_balance_temperature"];
                 s.valueA = config["white_balance_temperature_red"].as<unsigned int>();
                 s.valueB = config["white_balance_temperature_blue"].as<unsigned int>();
+                s.onOff = config["auto_white_balance"].as<unsigned int>();
                 camera.camera.SetProperty(&s);
                 
                 //XXX: auto white balance
