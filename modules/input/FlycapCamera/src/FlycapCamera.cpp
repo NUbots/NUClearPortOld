@@ -67,14 +67,14 @@ namespace modules {
                                     std::vector<messages::input::Image::Pixel> data(960*1280, {0,0,0});
                                     std::unique_ptr<messages::input::Image> image;
                                     FlyCapture2::Image& rawImage = *pImage;
-
                                     //const size_t total = 1280 * 960;
 
                                     // do a cache-coherent demosaic step
-                                    for (size_t j = 1; j < 959*1280; j += 1280) {
+                                    for (size_t j = 960/2-465; j < 960/2+465; j += 1280) {
                                         
                                         
-                                        for(size_t i = 0; i < 1277; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
+                                        for (size_t i = reactor->getViewStart(j/1280,1280,960,465); 
+                                            i < getViewEnd(j/1280,1280,960,465); i += 2) { // assume we always start on an even pixel (odd ones are nasty)
                                             
                                             const size_t index = i+j;
                                             //do the current row
@@ -118,7 +118,8 @@ namespace modules {
                                         }
                                         j += 1280;
                                         // do the second line
-                                        for(size_t i = 0; i < 1277; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
+                                        for (size_t i = reactor->getViewStart(j/1280,1280,960,465); 
+                                            i < getViewEnd(j/1280,1280,960,465); i += 2) { // assume we always start on an even pixel (odd ones are nasty)
                                             
                                             const size_t index = i+j;
                                             //do the current row
@@ -174,7 +175,7 @@ namespace modules {
                                             
                                         }
                                     }
-                                    image = std::unique_ptr<messages::input::Image>(new messages::input::Image(640, 480, std::move(data)));
+                                    image = std::unique_ptr<messages::input::Image>(new messages::input::Image(1280, 960, std::move(data)));
                                     reactor->emit(std::move(image));
                                     
                                 }

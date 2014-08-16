@@ -44,7 +44,24 @@ namespace modules {
         private:
             /// @brief Our internal camera class that interacts with the physical device
             PtGreyCamera camera;
+            
+            
+            
         public:
+            
+            //these are used for radial lenses with a circular display area to speed up the image demosaicing
+            //get the factor of 2 aligned left edge of the circle
+            static constexpr size_t getViewStart(const int& ptHeight, const int& width, const int& height, const int& radius) {
+                return static_cast<size_t>(((width/2 - (int)sqrt(radius*radius - (ptHeight-height/2)*(ptHeight-height/2))) >> 1) << 1);
+            }
+            
+            //get the factor of 2 aligned right edge of the circle
+            static constexpr size_t getViewEnd(const int& ptHeight, const int& width, const int& height, const int& radius) {
+                return static_cast<size_t>(((width/2 + (int)sqrt(radius*radius - (ptHeight-height/2)*(ptHeight-height/2))) >> 1) << 1);
+            }
+            
+            
+            
             /// @brief Our configuration file for this class
             static constexpr const char* CONFIGURATION_PATH = "FlycapCamera.yaml";
 
