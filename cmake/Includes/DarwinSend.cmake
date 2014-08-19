@@ -24,5 +24,5 @@ ADD_CUSTOM_TARGET("nc"
 		  DEPENDS ${roles} "${CMAKE_SOURCE_DIR}/cmake/Scripts/install.py")
 
 ADD_CUSTOM_TARGET("robotx"
-		  COMMAND python "${CMAKE_SOURCE_DIR}/cmake/Scripts/install.py" "--robot_ip=10.0.1.40" "--username=robotx" "--config=u"
+		  COMMAND python "${CMAKE_SOURCE_DIR}/cmake/Scripts/install.py" "--robot_ip=10.0.0.50" "--username=robotx" "--config=u"
 		  DEPENDS ${roles} "${CMAKE_SOURCE_DIR}/cmake/Scripts/install.py")

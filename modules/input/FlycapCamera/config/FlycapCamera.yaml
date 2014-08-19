@@ -1,4 +1,4 @@
-deviceID: 0
+deviceID: 14071857
 
 imageFormat: YUYV
 #don't change the image size, it is fixed for this implementation.
@@ -13,7 +13,7 @@ DISTORTION_FACTOR: -0.000018
 # (int): min=160 max=842 step=1 default=160 float range is -5.63035, 24.0001 - unsure if both must be set)
 gain: 160
 #auto is supported (bool): default=1
-gain_auto: 0
+gain_auto: 1
 
 # Brightness control.
 # (int): min=0 max=1023 step=1 default=0 (float range is 0. to 6.2439 unsure if both must be set)
@@ -29,7 +29,7 @@ white_balance_temperature_red: 550
 white_balance_temperature_blue: 810
 # auto is supported (bool): default=1
 #IMPLEMENTATION NOTE: auto white is a separate setting to balance even though it has an auto flag
-auto_white_balance: 0
+auto_white_balance: 1
 
 # Determines the exposure time of the camera sensor. The exposure time is limited by the frame interval.
 # Drivers should interpret the values as 100 µs units, where the value 1 stands for 1/10000th of a second, 10000 for 1 second and 100000 for 10 seconds.

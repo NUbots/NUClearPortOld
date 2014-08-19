@@ -45,56 +45,16 @@ namespace modules {
             
         }
 
-        std::unique_ptr<Image> PtGreyCamera::getImage() {
-            if (!streaming) {
-                return nullptr;
-            }
-            /*
-            v4l2_buffer current;
-            memset(&current, 0, sizeof(current));
-            current.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
-            current.memory = V4L2_MEMORY_MMAP;
-
-            // Get our frame buffer with data in it
-            if (ioctl(fd, VIDIOC_DQBUF, &current) == -1) {
-                throw std::system_error(errno, std::system_category(), "There was an error while de-queuing a buffer");
-            }
-
-            std::vector<Image::Pixel> data(width * height);
-            std::unique_ptr<Image> image;
-
-             {
-                uint8_t* input = static_cast<uint8_t*>(buff[current.index].payload);
-
-                const size_t total = width * height;
-
-                // Fix the colour information to be YUV444 rather then YUV422
-                for(size_t i = 0; i < total; ++++i) {
-
-                    data[i].y  = input[i * 2];
-                    data[i].cb = input[i * 2 + 1];
-                    data[i].cr = input[i * 2 + 3];
-
-                    data[i + 1].y  = input[i * 2 + 2];
-                    data[i + 1].cb = input[i * 2 + 1];
-                    data[i + 1].cr = input[i * 2 + 3];
-                }
-
-                // Move this data into the image
-                image = std::unique_ptr<Image>(new Image(width, height, std::move(data)));
-            }*/
-            
-            // Return our image
-            std::unique_ptr<Image> image;
-            return image;
-        }
-
         void PtGreyCamera::resetCamera(const size_t device, size_t w, size_t h) {
             // if the camera device is already open, close it
             closeCamera();
-            
-            //XXX: select devices properly
-            FlyCapture2::Error error = camera.Connect( 0 );
+            std::cout << "beginning to create camera" << std::cout;
+            //XXX: support multiple cameras
+            FlyCapture2::PGRGuid deviceIdentifier;
+            FlyCapture2::BusManager().GetCameraFromSerialNumber((unsigned int)device, &deviceIdentifier );
+            std::cout << "retrieved device" << std::cout;
+            FlyCapture2::Error error = camera.Connect( &deviceIdentifier );
+            std::cout << "connected" << std::cout;
             
             if ( error != FlyCapture2::PGRERROR_OK )
             {
