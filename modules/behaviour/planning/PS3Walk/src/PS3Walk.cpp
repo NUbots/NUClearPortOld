@@ -37,9 +37,11 @@ namespace planning {
         : Reactor(std::move(environment)) {
 
         on<Trigger<Every<1, std::chrono::milliseconds>>, Options<Single>>([this](const time_t&) {
+
             JoystickEvent event;
             // read from joystick
             if (joystick.sample(&event)) {
+
                 if (event.isAxis()) {
                     // event was an axis event
                     switch (event.number) {
@@ -108,6 +110,11 @@ namespace planning {
                             break;
                     }
                 }
+            }
+            // If it's closed then we should try to reconnect
+            else if (!joystick.valid()) {
+
+                joystick.reconnect();
             }
         });
 
