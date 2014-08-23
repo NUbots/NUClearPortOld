@@ -39,32 +39,54 @@ namespace modules {
 
             // When we shutdown, we must tell our camera class to close (stop streaming)
             on<Trigger<Shutdown>>([this](const Shutdown&) {
-                camera.closeCamera();
+                for (auto& camera: cameras) {
+                    camera.closeCamera();
+                }
             });
 
             on<Trigger<Configuration<FlycapCamera>>>([this](const Configuration<FlycapCamera>& config) {
 
-                auto cameraParameters = std::make_unique<CameraParameters>();
+                
+                
+                    //XXX: NOT PER CAMERA
+                    auto cameraParameters = std::make_unique<CameraParameters>();
 
-                cameraParameters->imageSizePixels << config["imageWidth"].as<uint>() << config["imageHeight"].as<uint>();
-                cameraParameters->FOV << config["FOV_X"].as<double>() << config["FOV_Y"].as<double>();
-                cameraParameters->distortionFactor = config["DISTORTION_FACTOR"].as<double>();
-                arma::vec2 tanHalfFOV;
-                tanHalfFOV << std::tan(cameraParameters->FOV[0] * 0.5) << std::tan(cameraParameters->FOV[1] * 0.5);
-                arma::vec2 imageCentre;
-                imageCentre << cameraParameters->imageSizePixels[0] * 0.5 << cameraParameters->imageSizePixels[1] * 0.5;
-                cameraParameters->pixelsToTanThetaFactor << (tanHalfFOV[0] / imageCentre[0]) << (tanHalfFOV[1] / imageCentre[1]);
-                cameraParameters->focalLengthPixels = imageCentre[0] / tanHalfFOV[0];
+                    cameraParameters->imageSizePixels << config["imageWidth"].as<uint>() << config["imageHeight"].as<uint>();
+                    cameraParameters->FOV << config["FOV_X"].as<double>() << config["FOV_Y"].as<double>();
+                    cameraParameters->distortionFactor = config["DISTORTION_FACTOR"].as<double>();
+                    arma::vec2 tanHalfFOV;
+                    tanHalfFOV << std::tan(cameraParameters->FOV[0] * 0.5) << std::tan(cameraParameters->FOV[1] * 0.5);
+                    arma::vec2 imageCentre;
+                    imageCentre << cameraParameters->imageSizePixels[0] * 0.5 << cameraParameters->imageSizePixels[1] * 0.5;
+                    cameraParameters->pixelsToTanThetaFactor << (tanHalfFOV[0] / imageCentre[0]) << (tanHalfFOV[1] / imageCentre[1]);
+                    cameraParameters->focalLengthPixels = imageCentre[0] / tanHalfFOV[0];
                 emit<Scope::DIRECT>(std::move(cameraParameters));
                 
+                
+                    PtGreyCamera* cameraptr = nullptr;
+                    
+                    for (PtGreyCamera& c : cameras) {
+                        std::cout << c.deviceID << std::endl;
+                        if (c.deviceID == config["deviceID"].as<int>()) {
+                            cameraptr = &c;
+                            break;
+                        } else if (c.deviceID == -1) {
+                            cameraptr = &c;
+                            break;
+                        }
+                    }
+                    
+                    PtGreyCamera& camera = *cameraptr;
+                
                 try {
+                    
                     camera.resetCamera(config["deviceID"].as<uint>(), 1280, 960);
                     //camera.startStreaming();
                     camera.camera.StartCapture(
                                 [](FlyCapture2::Image* pImage, const void* pCallbackData) {
                                     FlycapCamera* reactor = reinterpret_cast<FlycapCamera*>(const_cast<void*>(pCallbackData));
                                     
-                                    constexpr uint radius = 465;
+                                    constexpr uint radius = 475;
                                     constexpr uint sourceWidth = 1280;
                                     constexpr uint sourceHeight = 960;
                                     constexpr uint hOffset = sourceWidth/2-radius;
@@ -79,15 +101,14 @@ namespace modules {
                                     size_t j2 = 0;
                                     for (size_t j = (sourceHeight/2-radius)*sourceWidth; j < (sourceHeight/2+radius)*sourceWidth; j += sourceWidth) {
                                         
-                                        
                                         for (size_t i = reactor->getViewStart(j/sourceWidth,sourceWidth,sourceHeight,radius); 
                                             i < getViewEnd(j/sourceWidth,sourceWidth,sourceHeight,radius)-2; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
                                             
                                             const size_t index = i+j;
-                                            const size_t dIndex = i+j2-hOffset;
+                                            const size_t dIndex = i+j2-hOffset+1;
                                             //do the current row
-                                            auto& pxNext = data[dIndex+1];
-                                            auto& pxNextNext = data[dIndex+2];
+                                            auto& pxNext = data[dIndex];
+                                            auto& pxNextNext = data[dIndex+1];
                                             
                                             //get the required information
                                             const auto& currentBlue = *rawImage[index];
@@ -103,8 +124,8 @@ namespace modules {
                                             
                                             //do the row below
                                             //px = data[dIndex+radius*2];
-                                            data[dIndex+1+radius*2].y = (unsigned char)(((unsigned int)currentBlue + (unsigned int)nextBlue) >> 1);
-                                            data[dIndex+2+radius*2].y = nextBlue;
+                                            data[dIndex+radius*2].y = (unsigned char)(((unsigned int)currentBlue + (unsigned int)nextBlue) >> 1);
+                                            data[dIndex+1+radius*2].y = nextBlue;
                                             
                                         }
                                         j += sourceWidth;
@@ -114,10 +135,10 @@ namespace modules {
                                             i < getViewEnd(j/sourceWidth,sourceWidth,sourceHeight,radius)-2; i += 2) { // assume we always start on an even pixel (odd ones are nasty)
                                             
                                             const size_t index = i+j;
-                                            const size_t dIndex = i+j2-hOffset;
+                                            const size_t dIndex = i+j2-hOffset+1;
                                             //do the current row
-                                            auto& pxNext = data[dIndex+1];
-                                            auto& pxNextNext = data[dIndex+2];
+                                            auto& pxNext = data[dIndex];
+                                            auto& pxNextNext = data[dIndex+1];
                                             
                                             //get the required information
                                             const auto& currentGreen = *rawImage[index];
@@ -132,25 +153,8 @@ namespace modules {
                                             pxNextNext.cr = (unsigned char)(((unsigned int)currentRed + (unsigned int)nextRed) >> 1);
                                             
                                             //do the row below
-                                            data[dIndex+1+radius*2].cr = currentRed;
-                                            data[dIndex+2+radius*2].cr = (unsigned char)(((unsigned int)currentRed + (unsigned int)nextRed) >> 1);
-                                            
-                                            
-                                            //do the row above
-                                            //XXX: if we are feeling hacky, this line can be ignored. It just makes things nicer
-                                            /*px = data[index-1280];
-                                            pxNext = data[index+1-1280];
-                                            pxNextNext = data[index+2-1280];
-                                            
-                                            px.y = (unsigned char)(((unsigned int)currentRed + (unsigned int)px.y) >> 1);
-                                            pxNext.cb = (unsigned char)(((unsigned int)currentGreen + (unsigned int)pxNext.cb) >> 1);
-                                            pxNext.y = (unsigned char)(((((unsigned int)currentRed + (unsigned int)nextRed) >> 1) + (unsigned int)pxNext.y) >> 1);
-                                            pxNextNext.cb = (unsigned char)(((((unsigned int)currentGreen + (unsigned int)nextGreen) >> 1) + (unsigned int)pxNextNext.cb) >> 1);*/
-                                            
-                                            //utility::image::YCbCr res = utility::image::toYCbCr(utility::image::RGB{uint8_t(*(rawImage(j+1,i))),
-                                            //                                                    uint8_t(*(rawImage(j,i))),
-                                            //                                                    uint8_t(*(rawImage(j,i+1)))
-                                            //                                                    });
+                                            data[dIndex+radius*2].cr = currentRed;
+                                            data[dIndex+1+radius*2].cr = (unsigned char)(((unsigned int)currentRed + (unsigned int)nextRed) >> 1);
                                             
                                             //NOTE:
                                             //we think i,j and i+1,j+1 are green
@@ -164,17 +168,13 @@ namespace modules {
                                         j2 += radius*2;
                                     }
                                     image = std::unique_ptr<messages::input::Image>(new messages::input::Image(radius*2, sourceHeight, std::move(data)));
+                                    std::cout << reactor << std::endl;
                                     reactor->emit(std::move(image));
-                                    
                                 }
                                 ,this);
                     
                     
-                } catch(const std::exception& e) {
-                    NUClear::log<NUClear::DEBUG>(std::string("Exception while starting camera streaming: ") + e.what());
-                    throw e;
-                }
-                
+                    
                 //this is how to set properties
                 //XXX: brightness is not enabled by default - do we want it? (ditto for temperature)
                 auto& s = camera.getSettings()["brightness"];
@@ -238,8 +238,15 @@ namespace modules {
                 settings.insert( std::make_pair("temperature",                p) );
                 */
                 
-            });
-
+           
+                    
+                    
+                } catch(const std::exception& e) {
+                    NUClear::log<NUClear::DEBUG>(std::string("Exception while starting camera streaming: ") + e.what());
+                    throw e;
+                }
+                
+ });
             /*on<Trigger<Every<1, std::chrono::seconds>>, With<Configuration<LinuxCamera>>>("Camera Setting Applicator", [this] (const time_t&, const Configuration<LinuxCamera>& config) {
                 if(camera.isStreaming()) {
                     // Set all other camera settings

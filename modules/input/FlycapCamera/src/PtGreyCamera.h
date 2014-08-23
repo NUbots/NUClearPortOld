@@ -61,8 +61,6 @@ namespace modules {
             /// @brief this map is used to hold several ioctl wrappers that let us set settings easily
             std::map<std::string, FlyCapture2::Property> settings;
 
-            /// @brief The name of the device to read camera data from
-            int deviceID;
 
             /// @brief the format that we are reading in from the camera
             std::string format;
@@ -71,6 +69,9 @@ namespace modules {
             bool streaming;
 
         public:
+            /// @brief The name of the device to read camera data from
+            int deviceID;
+            
             /// @brief Our internal camera class that interacts with the physical device
             FlyCapture2::Camera camera;
             

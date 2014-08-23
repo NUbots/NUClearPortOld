@@ -48,13 +48,13 @@ namespace modules {
         void PtGreyCamera::resetCamera(const size_t device, size_t w, size_t h) {
             // if the camera device is already open, close it
             closeCamera();
-            std::cout << "beginning to create camera" << std::cout;
+            std::cout << "beginning to create camera" << std::endl;
             //XXX: support multiple cameras
             FlyCapture2::PGRGuid deviceIdentifier;
             FlyCapture2::BusManager().GetCameraFromSerialNumber((unsigned int)device, &deviceIdentifier );
-            std::cout << "retrieved device" << std::cout;
+            std::cout << "retrieved device" << std::endl;
             FlyCapture2::Error error = camera.Connect( &deviceIdentifier );
-            std::cout << "connected" << std::cout;
+            std::cout << "connected" << std::endl;
             
             if ( error != FlyCapture2::PGRERROR_OK )
             {

@@ -43,7 +43,7 @@ namespace modules {
 
         private:
             /// @brief Our internal camera class that interacts with the physical device
-            PtGreyCamera camera;
+            PtGreyCamera cameras[6];
             
             
             
@@ -63,7 +63,7 @@ namespace modules {
             
             
             /// @brief Our configuration file for this class
-            static constexpr const char* CONFIGURATION_PATH = "FlycapCamera.yaml";
+            static constexpr const char* CONFIGURATION_PATH = "FlycapCameras";
 
             /// @brief Called by the PowerPlant to build and setup our Reactor
             FlycapCamera(std::unique_ptr<NUClear::Environment> environment);
