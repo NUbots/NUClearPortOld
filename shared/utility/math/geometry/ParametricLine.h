@@ -25,7 +25,7 @@ namespace utility {
 namespace math {
 namespace geometry {
 
-    template<int n>
+    template<int n=2>
     class ParametricLine {
     private:
         using Vector = arma::vec::fixed<n>;
@@ -35,6 +35,10 @@ namespace geometry {
         Vector point;
         arma::vec2 tLimits = {-std::numeric_limits<double>::infinity(), std::numeric_limits<double>::infinity()};
         ParametricLine(){}
+        ParametricLine(const Vector& p1, const Vector& p2, bool segment = false) {
+            setFromTwoPoints(p1, p2, segment);
+        };
+
 
         arma::vec2 start() const{
             return point + tLimits[0] * direction;
@@ -71,7 +75,7 @@ namespace geometry {
         }
 
         Vector vectorToLineFromPoint(const Vector& p) const {
-            return projectPointToLine - p;
+            return projectPointToLine(p) - p;
         }
 
         double distanceToPoint(const Vector& p) const {
@@ -88,14 +92,14 @@ namespace geometry {
             //Check extended lines intersect at all
             double determinant = - direction[0] * l.direction[1] + direction[1] * l.direction[0];
             if(determinant == 0){
-                throw std::domain_error("Line::intersect - Lines do not intersect (parallel)");                
+                throw std::domain_error("Line::intersect - Lines do not intersect (parallel)");
             } else {
                 Ainverse << -l.direction[1] << l.direction[0] << arma::endr
-                         << -direction[1]   << direction[0]; 
+                         << -direction[1]   << direction[0];
                 Ainverse *= 1 / determinant;
             }
 
-            arma::vec/*2*/ tValues = Ainverse * (arma::vec(l.point) - arma::vec(point));  //arma::meat 
+            arma::vec/*2*/ tValues = Ainverse * (arma::vec(l.point) - arma::vec(point));  //arma::meat
 
             //Check bounds of line segments
             if(tValues[0] < tLimits[0] || tValues[0] > tLimits[1] //ie outside range of first line
