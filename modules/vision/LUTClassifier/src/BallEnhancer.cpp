@@ -91,6 +91,7 @@ namespace modules {
                         // Shift the camera by BALL_RADIUS in order to move it to the correct position
                         auto cameraMatrix = sensors.orientationCamToGround;
                         cameraMatrix(2, 3) -= BALL_RADIUS;
+                        cameraMatrix(2, 3) += 0.6;
 
                         // Get our two points
                         auto groundPoint = getGroundPointFromScreen(kinematicsCentre, cameraMatrix, FOCAL_LENGTH_PIXELS);

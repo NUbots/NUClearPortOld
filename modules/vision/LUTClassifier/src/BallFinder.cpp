@@ -64,7 +64,7 @@ namespace modules {
             auto xb = getGroundPointFromScreen({ 0, -double(image.height() - 1) / 2}, sensors.orientationCamToGround, FOCAL_LENGTH_PIXELS);
             auto xt = getGroundPointFromScreen(topY, sensors.orientationCamToGround, FOCAL_LENGTH_PIXELS);
             double dx = 2 * BALL_RADIUS / BALL_MINIMUM_INTERSECTIONS_COARSE;
-            double cameraHeight = sensors.orientationCamToGround(2,3);
+            double cameraHeight = sensors.orientationCamToGround(2,3) + 0.6;
 
             // This describes the direction of travel
             arma::vec3 direction = arma::normalise(xb);

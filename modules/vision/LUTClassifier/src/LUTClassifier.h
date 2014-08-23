@@ -61,7 +61,7 @@ namespace modules {
             double BALL_SEARCH_CIRCLE_SCALE = 2;
             double BALL_MAXIMUM_VERTICAL_CLUSTER_SPACING = 1;
             double BALL_HORIZONTAL_SUBSAMPLE_FACTOR = 1;
-            double BALL_RADIUS = 0.05;
+            double BALL_RADIUS = 0.31;
 
             double FOCAL_LENGTH_PIXELS = 2.0;
             double ALPHA = 2.0;
