@@ -81,8 +81,8 @@ namespace support {
 
             auto* imageData = message.mutable_classified_image();
 
-            imageData->mutable_dimensions()->set_x(image.dimensions[0]);
-            imageData->mutable_dimensions()->set_y(image.dimensions[1]);
+            imageData->mutable_dimensions()->set_x(image.width());
+            imageData->mutable_dimensions()->set_y(image.height());
 
             // Add the vertical segments to the list
             for(const auto& segment : image.verticalSegments) {

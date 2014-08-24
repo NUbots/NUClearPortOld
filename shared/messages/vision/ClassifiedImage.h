@@ -86,6 +86,14 @@ namespace messages {
             std::multimap<TClass, Segment> horizontalSegments;
             std::multimap<TClass, Segment> verticalSegments;
 
+            inline size_t width() const {
+                return dimensions[0];
+            }
+
+            inline size_t height() const {
+                return dimensions[1];
+            }
+
             int visualHorizonAtPoint(int x) const {
 
                 struct {

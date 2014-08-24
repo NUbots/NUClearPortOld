@@ -167,8 +167,8 @@ namespace research {
             uint greenRangeSqr = std::pow(greenData.range, 2);
             uint whiteRangeSqr = std::pow(whiteData.range, 2);
 
-            for (uint x = 0; x < classifiedImage.dimensions[0]; x++) {
-                for (uint y = classifiedImage.visualHorizonAtPoint(x); y < classifiedImage.dimensions[1]; y++) {
+            for (uint x = 0; x < classifiedImage.width(); x++) {
+                for (uint y = classifiedImage.visualHorizonAtPoint(x); y < classifiedImage.height(); y++) {
                     if (greenData.enabled) {
                         classifyNear(x, y, image, newLut, greenData.pixels, Colour::GREEN, greenRangeSqr);
                     }

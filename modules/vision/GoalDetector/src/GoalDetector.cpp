@@ -345,14 +345,14 @@ namespace vision {
                 arma::vec2 topMidGoal =(tl + tr) * 0.5;
                 arma::vec2 bottomMidGoal = (bl + br) * 0.5;
 
-                if (topMidGoal(1) < image.dimensions[1] / 2 - 10) {
+                if (topMidGoal(1) < image.height() / 2 - 10) {
                     measurements.push_back({ cartesianToSpherical(goalTopProj), goalTopProjDistCov});
-                    if (bottomMidGoal(1) > -image.dimensions[1] / 2 + 10) {
+                    if (bottomMidGoal(1) > -image.height() / 2 + 10) {
                         measurements.push_back({ cartesianToSpherical(goalHeight), goalHeightDistCov});
                     }
                 }
 
-                if (bottomMidGoal(1) > -image.dimensions[1] / 2 + 10) {
+                if (bottomMidGoal(1) > -image.height() / 2 + 10) {
                     measurements.push_back({ cartesianToSpherical(goalBaseProj), goalBaseProjDistCov});
                 }
 

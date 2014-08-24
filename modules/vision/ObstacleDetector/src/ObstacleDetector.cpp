@@ -72,7 +72,7 @@ namespace vision {
             // Or possibly do a threshold check (for every start there is an end, if all segments end we have reached the end of the obstacle)
 
             //JAKE's Vision Kinematics for distance to obstacle:
-            // arma::vec2 p1 = imageToScreen(obstacleBaseCentreImage, { double(image.dimensions[0]), double(image.dimensions[1]) });
+            // arma::vec2 p1 = imageToScreen(obstacleBaseCentreImage, { double(image.width()), double(image.height()) });
 
             // arma::vec3 obstacleBaseGroundProj = projectCamToGroundPlane(p1, sensors.orientationCamToGround);
             // //Testing (not done yet - TODO: TEST AND REMOVE THIS NOTE)
