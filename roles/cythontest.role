@@ -1,0 +1,6 @@
+ADD_ROLE(
+    NAME cythontest
+    MODULES
+            debug::CythonTest
+        )
+

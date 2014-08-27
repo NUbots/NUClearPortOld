@@ -61,6 +61,49 @@ FUNCTION(NUCLEAR_MODULE)
     # Find all our files
     FILE(GLOB_RECURSE src "${CMAKE_CURRENT_SOURCE_DIR}/src/**.cpp" , "${CMAKE_CURRENT_SOURCE_DIR}/src/**.h")
 
+    # Find any cython files
+    FILE(GLOB_RECURSE pyx "${CMAKE_CURRENT_SOURCE_DIR}/src/**.pyx")
+
+    # Compile our cython files into c++ files if we have any
+    IF(pyx)
+
+        # Get Cython and Python
+        FIND_PACKAGE(PythonLibs REQUIRED)
+        FIND_PACKAGE(Cython REQUIRED)
+
+        # We need our python include directories
+        INCLUDE_DIRECTORIES(${PYTHON_INCLUDE_DIRS})
+
+        # Include our generated output directory
+        INCLUDE_DIRECTORIES(${CMAKE_CURRENT_BINARY_DIR}/src/)
+
+        # Loop through our python files
+        FOREACH(py ${pyx})
+
+            # Get the absolute file, and the file without the extension
+            GET_FILENAME_COMPONENT(abs_file ${py} ABSOLUTE)
+            GET_FILENAME_COMPONENT(file_we ${py} NAME_WE)
+
+            # Calculate the Output Directory
+            FILE(RELATIVE_PATH outputpath ${CMAKE_CURRENT_SOURCE_DIR} ${py})
+            GET_FILENAME_COMPONENT(outputpath ${outputpath} PATH)
+            SET(outputpath "${CMAKE_CURRENT_BINARY_DIR}/${outputpath}")
+
+            # Add the files we will generate to our list to compile
+            LIST(APPEND src "${outputpath}/${file_we}.cpp")
+
+            # Make the python c++ files
+            ADD_CUSTOM_COMMAND(
+                OUTPUT "${outputpath}/${file_we}.cpp"
+                COMMAND ${CYTHON_EXECUTABLE}
+                ARGS --cplus -o "${outputpath}/${file_we}.cpp" ${abs_file}
+                DEPENDS ${abs_file}
+                COMMENT "Generating Cython c++ file for ${py}"
+                VERBATIM)
+
+        ENDFOREACH()
+    ENDIF(pyx)
+
     # Get our configuration files
     FILE(GLOB_RECURSE config_files "config/**")
 
