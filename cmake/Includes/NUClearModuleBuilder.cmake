@@ -90,15 +90,15 @@ FUNCTION(NUCLEAR_MODULE)
             SET(outputpath "${CMAKE_CURRENT_BINARY_DIR}/${outputpath}")
 
             # Add the files we will generate to our list to compile
-            LIST(APPEND src "${outputpath}/${file_we}.cpp")
+            LIST(APPEND src "${outputpath}/${file_we}.cxx")
 
             # Make the python c++ files
             ADD_CUSTOM_COMMAND(
-                OUTPUT "${outputpath}/${file_we}.cpp"
+                OUTPUT "${outputpath}/${file_we}.cxx"
                 COMMAND ${CYTHON_EXECUTABLE}
-                ARGS --cplus -o "${outputpath}/${file_we}.cpp" ${abs_file}
+                ARGS --cplus -o "${outputpath}/${file_we}.cxx" ${abs_file}
                 DEPENDS ${abs_file}
-                COMMENT "Generating Cython c++ file for ${py}"
+                COMMENT "Generating Cython C++ file for ${py}"
                 VERBATIM)
 
         ENDFOREACH()
@@ -144,6 +144,11 @@ FUNCTION(NUCLEAR_MODULE)
     ENDIF()
 
     TARGET_LINK_LIBRARIES(${module_name} ${NUBOTS_SHARED_LIBRARIES} ${LIBRARIES})
+
+    # If we are using python then link in python
+    IF(pyx)
+        TARGET_LINK_LIBRARIES(${module_name} ${PYTHON_LIBRARIES})
+    ENDIF()
 
     SET_PROPERTY(TARGET ${module_name} PROPERTY LIBRARY_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/lib")
 

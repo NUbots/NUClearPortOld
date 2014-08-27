@@ -17,22 +17,18 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
-#ifndef MODULES_DEBUG_CYTHONTEST_H
-#define MODULES_DEBUG_CYTHONTEST_H
-
-#include <nuclear>
+#include "CythonTest.h"
+#include "Cython_api.h"
 
 namespace modules {
 namespace debug {
 
-    class CythonTest : public NUClear::Reactor {
-    public:
-        /// @brief Called by the powerplant to build and setup the CythonTest reactor.
-        explicit CythonTest(std::unique_ptr<NUClear::Environment> environment);
-    };
+    CythonTest::CythonTest(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
+        Py_Initialize();
+        std::cout << "Module Import Status " << import_Cython() << std::endl;
+        hi();
+        Py_Finalize();
+    }
 
 }
 }
-
-
-#endif
