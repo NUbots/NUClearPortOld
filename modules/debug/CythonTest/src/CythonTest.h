@@ -26,6 +26,8 @@ namespace modules {
 namespace debug {
 
     class CythonTest : public NUClear::Reactor {
+    private:
+        std::shared_ptr<void> interface;
     public:
         /// @brief Called by the powerplant to build and setup the CythonTest reactor.
         explicit CythonTest(std::unique_ptr<NUClear::Environment> environment);

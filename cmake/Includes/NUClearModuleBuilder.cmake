@@ -68,7 +68,8 @@ FUNCTION(NUCLEAR_MODULE)
     IF(pyx)
 
         # Get Cython and Python
-        FIND_PACKAGE(PythonLibs REQUIRED)
+        FIND_PACKAGE(PythonInterp 3 REQUIRED)
+        FIND_PACKAGE(PythonLibs 3 REQUIRED)
         FIND_PACKAGE(Cython REQUIRED)
 
         # We need our python include directories

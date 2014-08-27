@@ -15,8 +15,6 @@
 #
 # Copyright 2013 NUBots <nubots@nubots.net>
 
-
-
 cdef extern from "<nuclear>" namespace "NUClear::dsl":
     cdef cppclass Trigger[T]:
         pass
@@ -26,11 +24,16 @@ cdef extern from "<nuclear>" namespace "NUClear::dsl":
 
 cdef extern from "<nuclear>" namespace "NUClear":
     cdef cppclass Reactor:
-        pass
+        int x
 
-cdef class Cython:
-    def __cinit__(self):
-        print("An Amazing String!")
+cdef class Interface:
+    cdef Reactor* reactor
 
-cdef api void hi():
-    print("Please work!")
+    cdef build(self, Reactor* reactor):
+        self.reactor = reactor
+        print(<int>self.reactor)
+
+cdef public buildCythonTest(Reactor* reactor):
+    interface = Interface()
+    interface.build(reactor)
+    return interface

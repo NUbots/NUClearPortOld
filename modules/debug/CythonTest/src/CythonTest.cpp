@@ -17,18 +17,34 @@
  * Copyright 2013 NUBots <nubots@nubots.net>
  */
 
+// I need this because CYTHON ARE MORONS
+#ifndef DL_IMPORT
+  #define DL_IMPORT(t) t
+#endif
+
 #include "CythonTest.h"
-#include "Cython_api.h"
+#include <Python.h>
+#include "Interface.h"
 
 namespace modules {
 namespace debug {
 
-    CythonTest::CythonTest(std::unique_ptr<NUClear::Environment> environment) : Reactor(std::move(environment)) {
-        Py_Initialize();
-        std::cout << "Module Import Status " << import_Cython() << std::endl;
-        hi();
-        Py_Finalize();
+    std::shared_ptr<PyObject> initModule(NUClear::Reactor* reactor) {
+        // Initialise Python
+        if(!Py_IsInitialized()) {
+            Py_InitializeEx(0);
+        }
+
+        // Initialise this modules things
+        PyInit_Interface();
+
+        // Build a python reactor interface
+        return std::shared_ptr<PyObject>(buildCythonTest(reactor));
     }
+
+    CythonTest::CythonTest(std::unique_ptr<NUClear::Environment> environment)
+    : Reactor(std::move(environment))
+    , interface(initModule(this)) {}
 
 }
 }
