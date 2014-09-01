@@ -15,20 +15,17 @@
 #
 # Copyright 2013 NUBots <nubots@nubots.net>
 
-cimport NUClear
+cdef extern from "<nuclear>" namespace "NUClear::dsl":
+    cdef cppclass Trigger[T]:
+        pass
+    cdef cppclass With[T]:
+        pass
 
-cdef doSomething(int something):
-    print "Did I win?"
+ctypedef void (*f_type)(int)
 
-cdef class Interface:
-    cdef NUClear.Reactor* reactor
-
-    cdef build(self, NUClear.Reactor* reactor):
-        self.reactor = reactor
-        print(<int>self.reactor)
-        reactor.on[NUClear.Trigger[int]](<NUClear.f_type>doSomething)
-
-cdef public buildCythonTest(NUClear.Reactor* reactor):
-    interface = Interface()
-    interface.build(reactor)
-    return interface
+cdef extern from "<nuclear>" namespace "NUClear":
+    cdef cppclass ReactionHandle:
+        pass
+    cdef cppclass Reactor:
+        ReactionHandle on[T](f_type)
+        pass

@@ -44,7 +44,12 @@ namespace debug {
 
     CythonTest::CythonTest(std::unique_ptr<NUClear::Environment> environment)
     : Reactor(std::move(environment))
-    , interface(initModule(this)) {}
+    , interface(initModule(this)) {
+
+        on<Trigger<Every<1, std::chrono::seconds>>>([this](const time_t&) {
+            emit(std::make_unique<int>());
+        });
+    }
 
 }
 }
