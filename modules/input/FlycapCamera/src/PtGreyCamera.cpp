@@ -29,6 +29,7 @@
 #include <linux/videodev2.h>
 #include <jpeglib.h>
 #include "PtGreyCamera.h"
+#include "CamCallbacks.h"
 
 
 #include "utility/image/ColorModelConversions.h"
@@ -40,6 +41,7 @@ namespace modules {
     namespace input {
 
         using messages::input::Image;
+        using messages::support::Configuration;
 
         PtGreyCamera::PtGreyCamera() : width(0), height(0), deviceID(-1), streaming(false) {
             
@@ -123,10 +125,17 @@ namespace modules {
             settings.insert( std::make_pair("temperature",                p) );
         }
 
-        void PtGreyCamera::startStreaming() {
+        void PtGreyCamera::startStreaming(void* reactor) {
             if (!streaming) {
+                
+                if (reactor != NULL) {
+                    callbackArgs = {reactor, this};
+                }
+                
                 // Start streaming data
-                FlyCapture2::Error error = camera.StartCapture();
+                FlyCapture2::Error error = camera.StartCapture(
+                                &captureRadial
+                                ,&callbackArgs);
                 if ( error == FlyCapture2::PGRERROR_ISOCH_BANDWIDTH_EXCEEDED )
                 {
                     throw std::system_error(errno, std::system_category(), "Bandwidth exceeded");
@@ -176,6 +185,53 @@ namespace modules {
 
         const std::string& PtGreyCamera::getFormat() const {
             return format;
+        }
+
+        void PtGreyCamera::configure(const YAML::Node& config) {
+            //this is how to set properties
+            //XXX: brightness is not enabled by default - do we want it? (ditto for temperature)
+            auto& s = this->getSettings()["brightness"];
+            //s.onOff = true;
+            s.valueA = config["brightness"].as<unsigned int>();
+            camera.SetProperty(&s);
+            
+            s = this->getSettings()["gain"];
+            s.autoManualMode = config["gain_auto"].as<unsigned int>();
+            s.valueA = config["gain"].as<unsigned int>();
+            camera.SetProperty(&s);
+            
+            s = this->getSettings()["gamma"];
+            s.onOff = true;
+            s.valueA = config["gamma"].as<unsigned int>();
+            camera.SetProperty(&s);
+            
+            s = this->getSettings()["absolute_exposure"];
+            s.valueA = config["absolute_exposure"].as<unsigned int>();
+            camera.SetProperty(&s);
+            
+            s = this->getSettings()["absolute_pan"];
+            s.valueA = config["absolute_pan"].as<unsigned int>();
+            camera.SetProperty(&s);
+            
+            s = this->getSettings()["absolute_tilt"];
+            s.valueA = config["absolute_tilt"].as<unsigned int>();
+            camera.SetProperty(&s);
+            
+            s = this->getSettings()["auto_exposure"];
+            s.onOff = config["auto_exposure"].as<int>();
+            s.absValue = config["auto_exposure_val"].as<float>();
+            camera.SetProperty(&s);
+            
+            s = this->getSettings()["white_balance_temperature"];
+            s.valueA = config["white_balance_temperature_red"].as<unsigned int>();
+            s.valueB = config["white_balance_temperature_blue"].as<unsigned int>();
+            s.onOff = config["auto_white_balance"].as<unsigned int>();
+            camera.SetProperty(&s);
+            
+            //XXX: auto white balance
+            //auto& s = camera.getSettings()["absolute_pan"];
+            //s.valueA = config["absolute_pan"].as<unsigned int>();
+            //camera.camera.SetProperty(&s);
         }
 
         void PtGreyCamera::closeCamera() {

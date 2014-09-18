@@ -24,12 +24,15 @@
 #include <memory>
 #include <string>
 #include <flycapture/FlyCapture2.h>
+#include <yaml-cpp/yaml.h>
 
 #include "messages/input/Image.h"
+#include "messages/support/Configuration.h"
 //#include "V4L2CameraSetting.h"
 
 namespace modules {
     namespace input {
+        using messages::support::Configuration;
 
         /**
          * @brief This class encapsulates the physical camera device. It will setup a camera device and begin streaming
@@ -50,7 +53,7 @@ namespace modules {
         private:
             
             
-            
+            std::pair<void*,PtGreyCamera*> callbackArgs;
 
             /// @brief the width of the image being retrieved from the camera
             size_t width;
@@ -143,7 +146,7 @@ namespace modules {
             /**
              * @brief Starts the camera streaming video
              */
-            void startStreaming();
+            void startStreaming(void* reactor);
 
             /**
              * @brief Check whether the camera is actively streaming video
@@ -154,6 +157,11 @@ namespace modules {
              * @brief Stops the camera streaming video
              */
             void stopStreaming();
+            
+            /**
+             * @brief reconfigures the camera parameters
+             */
+            void configure(const YAML::Node& config);
         };
 
     }  // input

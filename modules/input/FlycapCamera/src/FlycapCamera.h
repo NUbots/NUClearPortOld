@@ -23,10 +23,11 @@
 #include <nuclear>
 #include <flycapture/FlyCapture2.h>
 #include "PtGreyCamera.h"
+#include "messages/input/Image.h"
 
 namespace modules {
     namespace input {
-
+        using messages::input::Image;
         /**
          * @breif This module is responsible for reading data from the Darwin's Camera and emitting the resulting images.
          *
@@ -49,18 +50,9 @@ namespace modules {
             
         public:
             
-            //these are used for radial lenses with a circular display area to speed up the image demosaicing
-            //get the factor of 2 aligned left edge of the circle
-            static constexpr size_t getViewStart(const int& ptHeight, const int& width, const int& height, const int& radius) {
-                return static_cast<size_t>(((width/2 - (int)sqrt(radius*radius - (ptHeight-height/2)*(ptHeight-height/2))) / 2) * 2);
+            void emitImage(std::unique_ptr<messages::input::Image>&& image) {
+                emit(std::move(image));
             }
-            
-            //get the factor of 2 aligned right edge of the circle
-            static constexpr size_t getViewEnd(const int& ptHeight, const int& width, const int& height, const int& radius) {
-                return static_cast<size_t>(((width/2 + (int)sqrt(radius*radius - (ptHeight-height/2)*(ptHeight-height/2))) / 2) * 2);
-            }
-            
-            
             
             /// @brief Our configuration file for this class
             static constexpr const char* CONFIGURATION_PATH = "FlycapCameras";
